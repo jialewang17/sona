@@ -4,6 +4,8 @@
 
 - ``SONA_WIKI_USE_LLM``：开启时用 ``workflow/wiki_rag`` 调用 tools profile 模型做 RAG。
 - ``SONA_WIKI_WEIBO_AUX``：在事件概述/启示类问题下附加 ``weibo_aisearch`` 摘录进上下文。
+- ``SONA_WIKI_NEO4J_PRIORITY``：熊猫/大熊猫相关问题时，**仅**走 ``tools/neo4j_qa``（Neo4j 检索 + 主答 LLM + 无证据时 LLM 兜底 + 质量评估），**不**走本地 Markdown 检索、``wiki_rag``、微博智搜与 wiki 候选回流。设为 ``0`` 则熊猫题也走普通 wiki。连接使用 ``NEO4J_*``，与 Graph RAG 的 ``SONA_NEO4J_*`` 分离。
+- ``SONA_WIKI_GRAPH_SOURCE_DISPLAY_ROOT``：可选。来源 ``path`` 为绝对路径且文件在该目录下时，写入 ``path_display``（相对该根的短路径），CLI 优先展示。
 
 Contract target (spec v1):
 {
@@ -281,17 +283,40 @@ def _source_dicts_for_llm(sources: List[WikiSource], project_root: Path) -> List
 
 
 def _enrich_source_dicts_with_local_files(source_dicts: List[Dict[str, Any]], project_root: Path) -> None:
-    """为每条来源补充本地绝对路径与 file:// URI，便于在终端或 IDE 中打开原文。"""
+    """为每条来源补充本地绝对路径与 file:// URI，便于在终端或 IDE 中打开原文。
+
+    ``path`` 可为项目相对路径，或磁盘绝对路径（常见于 Neo4j ``source_file``）。
+    若设置 ``SONA_WIKI_GRAPH_SOURCE_DISPLAY_ROOT`` 且解析后的文件落在该目录下，则增加 ``path_display``（POSIX 相对路径）供展示。
+    """
     pr = project_root.resolve()
+    disp_root_raw = str(os.environ.get("SONA_WIKI_GRAPH_SOURCE_DISPLAY_ROOT", "") or "").strip()
+    disp_base: Path | None = None
+    if disp_root_raw:
+        try:
+            disp_base = Path(disp_root_raw).expanduser().resolve()
+        except OSError:
+            disp_base = None
+
     for d in source_dicts:
         rel = str(d.get("path") or "").strip()
         if not rel:
             continue
         try:
-            p = (pr / rel).resolve()
-            if p.is_file():
-                d["abs_path"] = str(p)
-                d["file_uri"] = p.as_uri()
+            raw_p = Path(rel).expanduser()
+            if raw_p.is_absolute():
+                p = raw_p.resolve()
+            else:
+                p = (pr / rel).resolve()
+            if not p.is_file():
+                continue
+            d["abs_path"] = str(p)
+            d["file_uri"] = p.as_uri()
+            if disp_base is not None:
+                try:
+                    if p.is_relative_to(disp_base):
+                        d["path_display"] = p.relative_to(disp_base).as_posix()
+                except (ValueError, OSError):
+                    pass
         except Exception:
             continue
 
@@ -618,6 +643,175 @@ def _wiki_llm_enabled() -> bool:
     if s == "":
         return True
     return s.lower() in ("1", "true", "yes", "y", "on")
+
+
+def _wiki_neo4j_priority_enabled() -> bool:
+    """为 True 时，熊猫/大熊猫相关问题只走 ``neo4j_qa``，不走路径 wiki。"""
+    raw = str(os.environ.get("SONA_WIKI_NEO4J_PRIORITY", "1") or "").strip().lower()
+    if not raw:
+        return True
+    return raw not in ("0", "false", "no", "n", "off")
+
+
+def _wiki_sources_from_neo4j_rows(rows: List[Dict[str, str]], *, query: str) -> List[WikiSource]:
+    """将 Neo4j 命中行转为 WikiSource（供 ``neo4j_qa`` 结果映射为 wiki 的 sources 列表）。"""
+    out: List[WikiSource] = []
+    _ = query
+    for row in rows[:20]:
+        subj = str(row.get("subject") or "").strip()
+        pred = str(row.get("predicate") or "").strip()
+        obj = str(row.get("object") or "").strip()
+        ev = str(row.get("evidence") or "").strip()
+        src = str(row.get("source_file") or "").strip()
+        title = f"图谱：{subj or '节点'} —{pred or '关系'}→ {obj or '节点'}"
+        if len(title) > 118:
+            title = title[:117].rstrip() + "…"
+        snippet_lines = [f"{subj} —[{pred}]→ {obj}"]
+        if ev:
+            snippet_lines.append(f"证据摘录：{ev[:520]}")
+        snippet = "\n".join(snippet_lines)
+        if len(snippet) > 1200:
+            snippet = snippet[:1199].rstrip() + "…"
+        path = src if src else "neo4j://knowledge-graph"
+        try:
+            ts = float(row.get("total_score") or 0)
+        except (TypeError, ValueError):
+            ts = 0.0
+        score = round(0.88 + min(0.11, ts / 200.0), 4)
+        out.append(WikiSource(title=title, path=path, snippet=snippet, score=score))
+    return out
+
+
+def _wiki_neo4j_persona_from_style(style: str) -> str:
+    """将 ``/wiki`` 的 style 映射到 ``neo4j_qa`` 的 persona。"""
+    s = str(style or "").strip().lower()
+    if s in ("teach", "teacher", "tutorial"):
+        return "educator"
+    if s in ("kid", "child"):
+        return "kid"
+    if s in ("expert", "pro"):
+        return "expert"
+    if s in ("story", "narrative"):
+        return "story"
+    return "default"
+
+
+def _answer_wiki_via_neo4j_qa_only(
+    *,
+    query: str,
+    normalized_query: str,
+    style: str,
+    project_root: Path,
+    topk_hint: int,
+) -> Dict[str, Any]:
+    """
+    熊猫相关问题：只执行 ``tools.neo4j_qa.neo4j_qa`` 工具链（与 CLI ``neo4j_qa`` 一致），
+    不执行 Markdown 检索、wiki_rag、微博、高价值候选写入等。
+    """
+    from tools.neo4j_qa import neo4j_qa
+
+    root = project_root.resolve()
+    persona = _wiki_neo4j_persona_from_style(style)
+    try:
+        tk = max(12, min(int(topk_hint or 20), 40))
+    except Exception:
+        tk = 20
+    raw_env = str(os.environ.get("SONA_WIKI_NEO4J_TOP_K", "") or "").strip()
+    if raw_env:
+        try:
+            tk = max(8, min(int(raw_env), 50))
+        except ValueError:
+            pass
+    strict_raw = str(os.environ.get("SONA_WIKI_NEO4J_STRICT", "true") or "").strip().lower()
+    strict_mode = strict_raw not in ("0", "false", "no", "n", "off")
+
+    raw = neo4j_qa.invoke(
+        {
+            "question": query,
+            "top_k": tk,
+            "database": "",
+            "strict_mode": strict_mode,
+            "persona": persona,
+        }
+    )
+    if not isinstance(raw, str):
+        raw = str(raw)
+    try:
+        obj: Dict[str, Any] = json.loads(raw)
+    except json.JSONDecodeError:
+        return {
+            "answer": "熊猫图谱问答返回了非 JSON 结果，请检查 neo4j_qa 工具输出。",
+            "sources": [],
+            "_wiki_meta": {
+                "normalized_query": normalized_query,
+                "wiki_route": "neo4j_qa_only",
+                "fallback_used": True,
+                "llm_used": True,
+                "neo4j_qa_raw_preview": raw[:800],
+                "weibo_aux": {"used": False},
+                "output_candidate": {"created": False, "reason": "neo4j_qa_only_parse_error"},
+            },
+        }
+
+    answer = str(obj.get("answer") or "").strip()
+    evidences = obj.get("evidences") if isinstance(obj.get("evidences"), list) else []
+    rows: List[Dict[str, str]] = []
+    for e in evidences:
+        if not isinstance(e, dict):
+            continue
+        rows.append(
+            {
+                "subject": str(e.get("subject") or ""),
+                "predicate": str(e.get("predicate") or ""),
+                "object": str(e.get("object") or ""),
+                "evidence": str(e.get("evidence") or ""),
+                "source_file": str(e.get("source_file") or ""),
+                "topic": str(e.get("topic") or ""),
+                "total_score": str(e.get("total_score") or ""),
+            }
+        )
+    wiki_srcs = _wiki_sources_from_neo4j_rows(rows, query=query)
+    source_dicts = [s.to_dict() for s in wiki_srcs]
+    _enrich_source_dicts_with_local_files(source_dicts, root)
+
+    err = str(obj.get("error") or "").strip()
+    meta: Dict[str, Any] = {
+        "normalized_query": normalized_query,
+        "wiki_route": "neo4j_qa_only",
+        "fallback_used": not bool(obj.get("ok")),
+        "retrieved_count": len(rows),
+        "rerank_enabled": False,
+        "retrieval_debug": {},
+        "domain": "熊猫图谱",
+        "weibo_aux": {"used": False},
+        "llm_used": True,
+        "neo4j_prefetch": {
+            "used": bool(rows),
+            "rows": len(rows),
+            "error": err,
+        },
+        "neo4j_qa": {
+            "ok": obj.get("ok"),
+            "answer_mode": obj.get("answer_mode"),
+            "rows_count": obj.get("rows_count"),
+            "database": obj.get("database"),
+            "persona": persona,
+            "top_k": tk,
+            "strict_mode": strict_mode,
+            "quality": obj.get("quality") if isinstance(obj.get("quality"), dict) else {},
+            "hit_graph": obj.get("hit_graph") if isinstance(obj.get("hit_graph"), dict) else {},
+            "query_plan": obj.get("query_plan"),
+        },
+        "output_candidate": {"created": False, "reason": "neo4j_qa_only_route"},
+    }
+    if err:
+        meta["neo4j_qa_error"] = err
+
+    return {
+        "answer": answer or "（本轮未生成正文，请查看 _wiki_meta.neo4j_qa）",
+        "sources": source_dicts,
+        "_wiki_meta": meta,
+    }
 
 
 _FRONTMATTER_RE = re.compile(r"^---\s*[\s\S]*?^---\s*\n?", re.MULTILINE)
@@ -1561,16 +1755,9 @@ def answer_wiki_query(
         get_env_config()
     except Exception:
         pass
-    try:
-        from tools.oprag import _maybe_incremental_wiki_compile, _wiki_auto_compile_on_query_enabled
 
-        if _wiki_auto_compile_on_query_enabled():
-            _maybe_incremental_wiki_compile(limit=200)
-    except Exception:
-        pass
     root = (project_root or Path(__file__).resolve().parents[1]).resolve()
     normalized_query = _normalize_query(query)
-    # Dynamic topk: event overview / entity-heavy queries benefit from a wider recall set.
     try:
         topk_in = int(topk or 6)
     except Exception:
@@ -1579,7 +1766,50 @@ def answer_wiki_query(
     dynamic_topk = topk_in
     if any(k in q0 for k in ("回应", "通报", "说明", "事件", "一事", "舆情")) or "12306" in q0:
         dynamic_topk = max(dynamic_topk, 9)
-    sources = retrieve_wiki_sources(query, topk=dynamic_topk, project_root=project_root)
+
+    if _wiki_neo4j_priority_enabled():
+        try:
+            from tools.neo4j_qa import is_panda_graph_wiki_query
+
+            if is_panda_graph_wiki_query(query):
+                try:
+                    return _answer_wiki_via_neo4j_qa_only(
+                        query=query,
+                        normalized_query=normalized_query,
+                        style=style,
+                        project_root=root,
+                        topk_hint=dynamic_topk,
+                    )
+                except Exception as exc:
+                    return {
+                        "answer": (
+                            "熊猫图谱问答（neo4j_qa）执行失败。"
+                            f"请检查 NEO4J_* 与模型配置及网络。详情：{exc}"
+                        ),
+                        "sources": [],
+                        "_wiki_meta": {
+                            "normalized_query": normalized_query,
+                            "wiki_route": "neo4j_qa_only",
+                            "fallback_used": True,
+                            "llm_used": False,
+                            "neo4j_qa_invoke_error": str(exc),
+                            "weibo_aux": {"used": False},
+                            "output_candidate": {"created": False, "reason": "neo4j_qa_invoke_failed"},
+                        },
+                    }
+        except Exception:
+            pass
+
+    try:
+        from tools.oprag import _maybe_incremental_wiki_compile, _wiki_auto_compile_on_query_enabled
+
+        if _wiki_auto_compile_on_query_enabled():
+            _maybe_incremental_wiki_compile(limit=200)
+    except Exception:
+        pass
+    # Dynamic topk: event overview / entity-heavy queries benefit from a wider recall set.
+    wiki_sources = retrieve_wiki_sources(query, topk=dynamic_topk, project_root=project_root)
+    sources = wiki_sources
     if not sources:
         return {
             "answer": "当前证据不足，未在知识库中检索到足够相关片段。建议缩小问题范围或换更具体关键词继续追问。",
@@ -1590,6 +1820,7 @@ def answer_wiki_query(
                 "fallback_reason": "insufficient_evidence",
                 "retrieved_count": 0,
                 "retrieval_debug": getattr(retrieve_wiki_sources, "_last_debug", {}),
+                "neo4j_prefetch": {"used": False, "rows": 0},
             },
         }
 
@@ -1615,6 +1846,7 @@ def answer_wiki_query(
         "retrieval_debug": getattr(retrieve_wiki_sources, "_last_debug", {}),
         "domain": domain_for_meta,
         "weibo_aux": weibo_meta,
+        "neo4j_prefetch": {"used": False, "rows": 0},
     }
 
     llm_used = False

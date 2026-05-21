@@ -9,8 +9,9 @@
 
 环境变量：
 
-- ``SONA_OPINION_SYSTEM_ROOT``：opinion-system 仓库根目录；未设置时默认使用
-  本机常见路径 ``/Users/biaowenhuang/Documents/opinion-system``（其他机器请显式配置）。
+- ``SONA_OPINION_SYSTEM_ROOT``：NetInsight 客户端根目录。支持两种布局：
+  1) ``{root}/client.py``（单文件，如 ``D:/netinsight``）；
+  2) opinion-system 布局 ``{root}/backend/src/netinsight/client.py``。
 - ``SONA_TOPIC_MONITOR_USE_OPINION_NETINSIGHT``：设为 ``1``/``true`` 时，
   ``scripts/run_topic_monitor_tick.py`` 会对活跃专题注入本模块提供的 ``search_func``。
 - 网察账号与 Sona 现有工具一致：``NETINSIGHT_USER`` / ``NETINSIGHT_PASS``（及
@@ -40,27 +41,49 @@ _CACHED_USER: str = ""
 
 
 def opinion_system_root() -> Path:
-    raw = os.environ.get("SONA_OPINION_SYSTEM_ROOT", "/Users/biaowenhuang/Documents/opinion-system")
+    raw = os.environ.get("SONA_OPINION_SYSTEM_ROOT", "").strip()
+    if not raw:
+        raw = "/Users/biaowenhuang/Documents/opinion-system"
     return Path(raw).expanduser().resolve()
 
 
-def _bootstrap_opinion_import_path(root: Path) -> None:
+def load_opinion_netinsight_client() -> Any:
+    """加载 NetInsight 客户端模块（单文件 ``client.py`` 或 opinion-system 包布局）。"""
+    import importlib
+    import importlib.util
+
+    root = opinion_system_root()
+
+    flat_client = root / "client.py"
+    if flat_client.is_file():
+        mod_name = "sona_netinsight_client"
+        spec = importlib.util.spec_from_file_location(mod_name, flat_client)
+        if spec is None or spec.loader is None:
+            raise ImportError(f"无法加载 NetInsight 客户端: {flat_client}")
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[mod_name] = mod
+        spec.loader.exec_module(mod)
+        return mod
+
     backend = root / "backend"
     src = backend / "src"
-    if not (src / "netinsight" / "client.py").is_file():
-        raise FileNotFoundError(f"未找到 opinion-system NetInsight 客户端: {src / 'netinsight' / 'client.py'}")
-    for p in (str(backend), str(src)):
-        if p not in sys.path:
-            sys.path.insert(0, p)
+    pkg_client = src / "netinsight" / "client.py"
+    if pkg_client.is_file():
+        for p in (str(backend), str(src)):
+            if p not in sys.path:
+                sys.path.insert(0, p)
+        return importlib.import_module("src.netinsight.client")
+
+    raise FileNotFoundError(
+        "未找到 NetInsight 客户端。请在 SONA_OPINION_SYSTEM_ROOT 下放置 "
+        "client.py，或 opinion-system 布局 backend/src/netinsight/client.py。"
+        f"当前 root={root}"
+    )
 
 
-def load_opinion_netinsight_client() -> Any:
-    """加载 ``src.netinsight.client``（来自 opinion-system）。"""
-    root = opinion_system_root()
-    _bootstrap_opinion_import_path(root)
-    import importlib
-
-    return importlib.import_module("src.netinsight.client")
+def _bootstrap_opinion_import_path(root: Path) -> None:
+    """兼容旧调用方；新代码请使用 ``load_opinion_netinsight_client``。"""
+    load_opinion_netinsight_client()
 
 
 def _sona_netinsight_credentials() -> Tuple[str, str]:

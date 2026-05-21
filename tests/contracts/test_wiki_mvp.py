@@ -55,3 +55,11 @@ def test_wiki_event_overview_avoids_concept_teach_boilerplate() -> None:
     assert "可先把它理解为一个可验证的概念问题" not in ans
     assert "立善志" not in ans and "行善业" not in ans
 
+
+def test_panda_graph_wiki_query_detection() -> None:
+    from tools.neo4j_qa import is_panda_graph_wiki_query
+
+    assert is_panda_graph_wiki_query("大熊猫主要栖息地在哪里？")
+    assert is_panda_graph_wiki_query("滚滚平时吃什么？")
+    assert not is_panda_graph_wiki_query("什么是舆情反转？")
+

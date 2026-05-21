@@ -21,6 +21,9 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+# 专题监测本地库
+data/topic_monitor_local.db
+
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/

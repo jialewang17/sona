@@ -17,6 +17,7 @@
 - ``SONA_TOPIC_MONITOR_USE_OPINION_NETINSIGHT``：``1`` 时 ``run_topic_monitor_tick`` 使用 opinion-system NetInsight 客户端拉数（需 ``SONA_OPINION_SYSTEM_ROOT`` + 网察账号）。
 - ``SONA_OPINION_SYSTEM_ROOT``：opinion-system 仓库根路径。
 - ``SONA_TOPIC_MONITOR_NETINSIGHT_WINDOW_HOURS``：单次拉取时间窗（小时），默认 ``24``。
+"""
 
 from __future__ import annotations
 

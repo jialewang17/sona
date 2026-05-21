@@ -1,6 +1,6 @@
 """话题监控流水线与周期报告生成。
 
-支持基于 Supabase/Postgres 的专题监控、快照分析、风险告警和日报/周报输出。
+支持基于**本地 SQLite**（默认 ``data/topic_monitor_local.db``）或内存演示的专题监控、快照分析、风险告警和日报/周报输出。
 
 编排增强（与事件分析的关系）：
 
@@ -23,9 +23,77 @@ from typing import Any, Callable, Dict, List, Optional
 
 import jieba
 
-from workflow.supabase_client import SupabaseDB, get_db, topic_store_configured
+from workflow.topic_monitor_sqlite import TopicMonitorSqliteStore, resolve_topic_monitor_sqlite_path
+from workflow.topic_monitoring_workflow import _normalize_search_words, dedupe_keywords
 
 SearchFunc = Callable[[List[str], str, int], List[Dict[str, Any]]]
+
+# 快照热词 jieba 统计时剔除的泛词（与「检索词」语义无关的高频字）
+_SNAPSHOT_JIEBA_STOP: frozenset[str] = frozenset(
+    {
+        "的",
+        "了",
+        "和",
+        "是",
+        "就",
+        "都",
+        "而",
+        "及",
+        "与",
+        "或",
+        "在",
+        "有",
+        "也",
+        "为",
+        "等",
+        "对",
+        "中",
+        "上",
+        "将",
+        "被",
+        "从",
+        "到",
+        "以",
+        "及",
+        "一个",
+        "没有",
+        "可以",
+        "这个",
+        "不是",
+        "自己",
+        "我们",
+        "他们",
+        "你们",
+        "什么",
+        "怎么",
+        "这样",
+        "那样",
+        "如果",
+        "因为",
+        "所以",
+        "但是",
+        "还是",
+        "已经",
+        "进行",
+        "表示",
+        "通过",
+        "目前",
+        "相关",
+        "问题",
+        "工作",
+        "时间",
+        "内容",
+        "用户",
+        "平台",
+        "发布",
+        "记者",
+        "报道",
+        "消息",
+        "网友",
+        "视频",
+        "图片",
+    }
+)
 
 
 def _utcnow() -> datetime:
@@ -55,7 +123,7 @@ class TopicMonitor:
 
 
 class InMemoryTopicStore:
-    """轻量内存数据层：用于本地 demo / 测试；外部库配置后会自动切换 Supabase/Postgres。"""
+    """轻量内存数据层：用于 /monitor demo 等显式 ``use_external_db=False`` 的场景。"""
 
     def __init__(self) -> None:
         self.topics: Dict[str, Dict[str, Any]] = {}
@@ -258,7 +326,7 @@ class InMemoryTopicStore:
         ]
 
     def update_monitor_topic(self, topic_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
-        """合并更新专题行（与 SupabaseDB.update_monitor_topic 语义对齐）。"""
+        """合并更新专题行 config 字段。"""
         row = self.topics.get(str(topic_id))
         if not row:
             return {}
@@ -288,10 +356,14 @@ class TopicMonitoringPipeline:
     ):
         if db is not None:
             self.db = db
-        elif use_external_db is True or (use_external_db is None and topic_store_configured()):
-            self.db = get_db()
-        else:
+        elif use_external_db is False:
             self.db = _DEFAULT_MEMORY_STORE
+        else:
+            sqlite_path = resolve_topic_monitor_sqlite_path()
+            if sqlite_path is not None:
+                self.db = TopicMonitorSqliteStore(sqlite_path)
+            else:
+                self.db = _DEFAULT_MEMORY_STORE
         self.config = config or MonitorConfig()
         raw_v = os.environ.get("SONA_MONITOR_VIRAL_AGG_THRESHOLD")
         if raw_v:
@@ -348,7 +420,7 @@ class TopicMonitoringPipeline:
         return topic
 
     def patch_topic_config(self, topic_id: str, patch: Dict[str, Any]) -> Dict[str, Any]:
-        """合并写入 ``monitor_topics.config``（内存库 / Postgres 均支持 update_monitor_topic）。"""
+        """合并写入 ``monitor_topics.config``（本地 SQLite / 内存库）。"""
         topic = self.db.get_topic_by_id(topic_id)
         if not topic:
             return {}
@@ -388,13 +460,27 @@ class TopicMonitoringPipeline:
         agg_alerts = self._check_alerts(topic_id, snapshot)
         return {"snapshot": snapshot, "alerts": viral_post_alerts + agg_alerts}
 
+    def _snapshot_post_limit(self, topic_id: str) -> int:
+        """快照统计用：与专题 ``netinsight_max_rows_hint`` / 流水线配额对齐，避免「库里有帖、快照恒为 500」。"""
+        hint = int(self.config.netinsight_row_cap_hint or 10_000)
+        topic = self.db.get_topic_by_id(topic_id)
+        if topic and isinstance(topic.get("config"), dict):
+            raw = (topic.get("config") or {}).get("netinsight_max_rows_hint")
+            if raw not in (None, ""):
+                try:
+                    hint = int(raw)
+                except (TypeError, ValueError):
+                    pass
+        return max(100, min(hint, 50_000))
+
     def _generate_snapshot(
         self,
         topic_id: str,
         since: Optional[datetime] = None,
     ) -> Dict[str, Any]:
         since = since or (_utcnow() - timedelta(hours=self.config.snapshot_interval_hours))
-        posts = self.db.get_collected_posts(topic_id, limit=500, since=since)
+        snap_limit = self._snapshot_post_limit(topic_id)
+        posts = self.db.get_collected_posts(topic_id, limit=snap_limit, since=since)
 
         if not posts:
             return self.db.create_snapshot(topic_id, {
@@ -435,7 +521,7 @@ class TopicMonitoringPipeline:
         all_content = " ".join(
             f"{p.get('title','')} {p.get('content','')}" for p in posts
         )
-        top_keywords = self._extract_keywords(all_content, top_n=12)
+        top_keywords = self._snapshot_top_keywords(topic_id, posts, all_content, top_n=12)
 
         snapshot_data = {
             "post_count": post_count,
@@ -447,6 +533,85 @@ class TopicMonitoringPipeline:
         }
         return self.db.create_snapshot(topic_id, snapshot_data)
 
+    def _load_snapshot_seed_keywords(self, topic_id: str) -> List[str]:
+        """与 ``extract_search_terms`` 输出对齐：监测词表 + 创建时写入的 ``extract_search_plan_snapshot.searchWords``。"""
+        seeds: List[str] = []
+        for row in self.db.get_topic_keywords(topic_id):
+            k = str(row.get("keyword") or "").strip()
+            if len(k) >= 2:
+                seeds.append(k)
+        topic = self.db.get_topic_by_id(topic_id) or {}
+        cfg = topic.get("config") if isinstance(topic.get("config"), dict) else {}
+        snap = cfg.get("extract_search_plan_snapshot")
+        if isinstance(snap, dict):
+            seeds.extend(_normalize_search_words(snap))
+        return dedupe_keywords(seeds, max_items=32)
+
+    def _jieba_token_freq(self, text: str) -> Dict[str, int]:
+        if not text or not text.strip():
+            return {}
+        raw = re.sub(r"[^\w\u4e00-\u9fff]+", " ", text)
+        words = [w.strip() for w in jieba.lcut(raw) if len(w.strip()) > 1]
+        freq: Dict[str, int] = {}
+        for word in words:
+            if word.isdigit() or word in _SNAPSHOT_JIEBA_STOP:
+                continue
+            freq[word] = freq.get(word, 0) + 1
+        return freq
+
+    def _snapshot_top_keywords(
+        self,
+        topic_id: str,
+        posts: List[Dict[str, Any]],
+        all_content: str,
+        *,
+        top_n: int = 12,
+    ) -> List[str]:
+        """
+        快照热词：对齐专题「检索词」语义（见 ``tools/extract_search_terms`` 的 searchWords 形态）。
+
+        仅在「标题+正文命中至少一个种子词」的帖子上统计 jieba 词频，避免无关帖拉高泛词；
+        无种子或无可锚定帖时回退为全文词频（与旧逻辑一致）。
+        """
+        seeds = self._load_snapshot_seed_keywords(topic_id)
+        if not seeds:
+            return self._extract_keywords(all_content, top_n=top_n)
+
+        combined: Dict[str, int] = {}
+        for p in posts:
+            text = f"{p.get('title') or ''} {p.get('content') or ''}"
+            if not any(s in text for s in seeds):
+                continue
+            for w, c in self._jieba_token_freq(text).items():
+                combined[w] = combined.get(w, 0) + int(c)
+
+        if not combined:
+            return self._extract_keywords(all_content, top_n=top_n)
+
+        ranked = sorted(combined.items(), key=lambda x: (-x[1], x[0]))
+        out: List[str] = []
+        seen: set[str] = set()
+
+        for s in seeds:
+            if len(out) >= top_n:
+                break
+            if s in seen:
+                continue
+            if s in combined or s in all_content:
+                out.append(s)
+                seen.add(s)
+
+        for w, _ in ranked:
+            if len(out) >= top_n:
+                break
+            if w in seen:
+                continue
+            if w in seeds:
+                continue
+            out.append(w)
+            seen.add(w)
+        return out[:top_n]
+
     def _extract_keywords(self, text: str, top_n: int = 10) -> List[str]:
         if not text or not text.strip():
             return []
@@ -454,7 +619,7 @@ class TopicMonitoringPipeline:
         words = [w.strip() for w in jieba.lcut(raw) if len(w.strip()) > 1]
         freq: Dict[str, int] = {}
         for word in words:
-            if word.isdigit():
+            if word.isdigit() or word in _SNAPSHOT_JIEBA_STOP:
                 continue
             freq[word] = freq.get(word, 0) + 1
         sorted_words = sorted(freq.items(), key=lambda item: (-item[1], item[0]))
@@ -748,7 +913,7 @@ class TopicMonitoringPipeline:
 
 
 def create_demo_topic() -> Dict[str, Any]:
-    pipeline = TopicMonitoringPipeline()
+    pipeline = TopicMonitoringPipeline(use_external_db=False)
     return pipeline.create_topic(
         name="高铁舆情",
         domain="交通",
@@ -785,7 +950,7 @@ def run_high_speed_rail_demo(
     interval_minutes: int = 1,
     output_dir: Optional[Path] = None,
 ) -> Dict[str, Any]:
-    pipeline = TopicMonitoringPipeline()
+    pipeline = TopicMonitoringPipeline(use_external_db=False)
     topic = create_demo_topic()
     search_func = search_func or _mock_high_speed_rail_search
     for cycle in range(cycles):
@@ -799,4 +964,4 @@ if __name__ == "__main__":
         demo = run_high_speed_rail_demo()
         print("高铁舆情示例专题已部署，报告路径：", demo["report"]["report_path"])
     except Exception as exc:
-        print("运行示例失败，请先配置 Supabase/Postgres：", exc)
+        print("运行示例失败：", exc)

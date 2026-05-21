@@ -122,7 +122,18 @@ def run_wiki_command(raw_query: str | None = None) -> None:
     get_env_config()
     result = answer_wiki_query(query, topk=6, style="teach", project_root=Path(__file__).resolve().parents[1])
     meta = result.get("_wiki_meta") if isinstance(result.get("_wiki_meta"), dict) else {}
-    if meta.get("llm_used"):
+    if meta.get("wiki_route") == "neo4j_qa_only":
+        nq = meta.get("neo4j_qa") if isinstance(meta.get("neo4j_qa"), dict) else {}
+        mode = str(nq.get("answer_mode") or "—")
+        rc = nq.get("rows_count", "—")
+        console.print(
+            f"[green]✓[/green] [bold]本轮仅使用 Neo4j 图谱问答[/bold] "
+            f"（[cyan]tools/neo4j_qa[/cyan]；模式 [cyan]{mode}[/cyan]；图谱证据条数 [cyan]{rc}[/cyan]）"
+        )
+        err = str(meta.get("neo4j_qa_error") or meta.get("neo4j_qa_invoke_error") or "").strip()
+        if err:
+            console.print(f"[yellow]（neo4j_qa：{err}）[/yellow]")
+    elif meta.get("llm_used"):
         console.print("[green]✓[/green] [bold]已使用 LLM（tools profile）基于检索片段生成回答[/bold]")
     elif result.get("sources"):
         hint = str(meta.get("llm_error") or "").strip()
@@ -138,25 +149,34 @@ def run_wiki_command(raw_query: str | None = None) -> None:
             )
         else:
             console.print("[yellow]（未使用 LLM：未知原因，已用检索模板）[/yellow]")
-    if isinstance(meta.get("weibo_aux"), dict) and meta["weibo_aux"].get("used"):
-        console.print("[dim]（已附加微博智搜辅助线索）[/dim]")
-    elif isinstance(meta.get("weibo_aux"), dict) and str(meta["weibo_aux"].get("error") or "").strip():
-        console.print(f"[dim]（微博智搜未取到片段：{meta['weibo_aux'].get('error')}）[/dim]")
-    score_meta = meta.get("value_score") if isinstance(meta.get("value_score"), dict) else {}
-    if score_meta:
-        total = score_meta.get("total", 0)
-        threshold = score_meta.get("threshold", 0)
-        is_high = bool(score_meta.get("is_high_value"))
-        badge = "[green]高价值[/green]" if is_high else "[dim]普通[/dim]"
-        console.print(f"[dim]（回答价值评分：{total}/{threshold}，判定：{badge}）[/dim]")
-    candidate_meta = meta.get("output_candidate") if isinstance(meta.get("output_candidate"), dict) else {}
-    if candidate_meta.get("created"):
-        console.print(
-            f"[green]✓[/green] [bold]已回流候选[/bold]："
-            f"[cyan]{candidate_meta.get('path', '')}[/cyan]"
-        )
-    elif str(candidate_meta.get("error") or "").strip():
-        console.print(f"[yellow]（候选回流失败：{candidate_meta.get('error')}）[/yellow]")
+    if meta.get("wiki_route") != "neo4j_qa_only":
+        neo_pf = meta.get("neo4j_prefetch") if isinstance(meta.get("neo4j_prefetch"), dict) else {}
+        if neo_pf.get("used"):
+            console.print(f"[dim]（已优先合并 Neo4j 图谱证据：{neo_pf.get('rows', 0)} 条三元组）[/dim]")
+        elif str(neo_pf.get("error") or "").strip():
+            console.print(f"[dim]（Neo4j 预取跳过：{neo_pf.get('error')}）[/dim]")
+    if meta.get("wiki_route") != "neo4j_qa_only":
+        if isinstance(meta.get("weibo_aux"), dict) and meta["weibo_aux"].get("used"):
+            console.print("[dim]（已附加微博智搜辅助线索）[/dim]")
+        elif isinstance(meta.get("weibo_aux"), dict) and str(meta["weibo_aux"].get("error") or "").strip():
+            console.print(f"[dim]（微博智搜未取到片段：{meta['weibo_aux'].get('error')}）[/dim]")
+    if meta.get("wiki_route") != "neo4j_qa_only":
+        score_meta = meta.get("value_score") if isinstance(meta.get("value_score"), dict) else {}
+        if score_meta:
+            total = score_meta.get("total", 0)
+            threshold = score_meta.get("threshold", 0)
+            is_high = bool(score_meta.get("is_high_value"))
+            badge = "[green]高价值[/green]" if is_high else "[dim]普通[/dim]"
+            console.print(f"[dim]（回答价值评分：{total}/{threshold}，判定：{badge}）[/dim]")
+    if meta.get("wiki_route") != "neo4j_qa_only":
+        candidate_meta = meta.get("output_candidate") if isinstance(meta.get("output_candidate"), dict) else {}
+        if candidate_meta.get("created"):
+            console.print(
+                f"[green]✓[/green] [bold]已回流候选[/bold]："
+                f"[cyan]{candidate_meta.get('path', '')}[/cyan]"
+            )
+        elif str(candidate_meta.get("error") or "").strip():
+            console.print(f"[yellow]（候选回流失败：{candidate_meta.get('error')}）[/yellow]")
     console.print("\n[bold]Wiki Answer[/bold]")
     console.print(result.get("answer", ""))
     sources = result.get("sources") if isinstance(result.get("sources"), list) else []
@@ -167,12 +187,17 @@ def run_wiki_command(raw_query: str | None = None) -> None:
                 continue
             title = str(item.get("title", ""))
             path = str(item.get("path", ""))
+            path_disp = str(item.get("path_display") or "").strip()
             snippet = str(item.get("snippet", ""))
             score = item.get("score", 0)
             abs_path = str(item.get("abs_path") or "").strip()
             file_uri = str(item.get("file_uri") or "").strip()
             console.print(f"{i}. {title} [dim](score={score})[/dim]")
-            console.print(f"   相对路径: {path}")
+            show_path = path_disp or path
+            if path_disp and path_disp != path:
+                console.print(f"   路径: {show_path} [dim](完整: {path})[/dim]")
+            else:
+                console.print(f"   路径: {show_path}")
             if abs_path:
                 console.print(f"   [cyan]本地文件: {abs_path}[/cyan]")
             if file_uri:

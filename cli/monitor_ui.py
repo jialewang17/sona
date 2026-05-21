@@ -6,7 +6,7 @@ import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import jieba
 from rich.prompt import Prompt
@@ -29,7 +29,35 @@ def _print_help() -> None:
     console.print("  [cyan]/monitor status <topic_id>[/cyan]    - 查询专题状态")
     console.print("  [cyan]/monitor report <topic_id> [daily|weekly][/cyan] - 生成日报/周报")
     console.print("  [dim]  环境变量：SONA_MONITOR_SKIP_EXTRACT=1 跳过 extract 精炼；SONA_TOPIC_MONITOR_INTERVAL_HOURS 默认采集间隔。[/dim]")
-    console.print("  [dim]  网察：SONA_TOPIC_MONITOR_USE_OPINION_NETINSIGHT=1 + SONA_OPINION_SYSTEM_ROOT + NETINSIGHT_USER/PASS 时，定时脚本可走 opinion-system 采集链。[/dim]")
+    console.print("  [dim]  持久化：默认写入项目 data/topic_monitor_local.db（可用 SONA_TOPIC_MONITOR_SQLITE 改路径）。[/dim]")
+    console.print(
+        "  [dim]  网察：SONA_TOPIC_MONITOR_USE_OPINION_NETINSIGHT=1 + SONA_OPINION_SYSTEM_ROOT + "
+        "NETINSIGHT_USER/PASS 时，create 首轮即拉帖；定时增量仍用 scripts/run_topic_monitor_tick.py。[/dim]"
+    )
+
+
+def _optional_netinsight_search_func(
+    pipeline: TopicMonitoringPipeline,
+) -> tuple[Optional[Any], bool]:
+    """
+    若已开启 opinion NetInsight，返回 (search_func, True)；否则 (None, False)。
+    构建失败时打印警告并返回 (None, False)，专题仍可使用 tick 补采。
+    """
+    from workflow.topic_netinsight_adapter import (
+        build_opinion_netinsight_search_func,
+        topic_monitor_use_opinion_netinsight,
+    )
+
+    if not topic_monitor_use_opinion_netinsight():
+        return None, False
+    try:
+        return build_opinion_netinsight_search_func(pipeline), True
+    except Exception as exc:  # noqa: BLE001
+        console.print(
+            f"[yellow]NetInsight 未就绪（{exc}），首轮将不拉帖。"
+            "请检查 SONA_OPINION_SYSTEM_ROOT、client.py 与 NETINSIGHT_USER/PASS。[/yellow]"
+        )
+        return None, False
 
 
 def _parse_create_args(args: str) -> tuple[str, str, list[str]]:
@@ -246,14 +274,39 @@ def _finalize_create_topic(
     for ln in format_monitor_workflow_hints(cfg).split("\n"):
         console.print(f"[dim]{ln}[/dim]")
 
-    pipeline.run_monitoring_cycle([tid])
+    search_func, netinsight_on = _optional_netinsight_search_func(pipeline)
+    if netinsight_on and search_func is not None:
+        console.print("[dim]首轮监测：通过 NetInsight 拉取网帖（可能需数分钟）…[/dim]")
+    elif not netinsight_on:
+        console.print(
+            "[yellow]未开启网察首轮拉帖：[/yellow]请在 .env 设置 "
+            "SONA_TOPIC_MONITOR_USE_OPINION_NETINSIGHT=1 及网察账号后重建，"
+            "或执行 ``python scripts/run_topic_monitor_tick.py``。"
+        )
+
+    cycle = pipeline.run_monitoring_cycle([tid], search_func=search_func)
+    post_count = 0
+    summary = ""
+    for item in cycle.get("results") or []:
+        if str(item.get("topic_id") or "") != tid:
+            continue
+        snap = item.get("snapshot") if isinstance(item.get("snapshot"), dict) else {}
+        post_count = int(snap.get("post_count") or 0)
+        summary = str(snap.get("summary") or "")
+        break
+
+    if search_func is not None:
+        console.print(
+            f"[green]首轮监测完成[/green]：快照 post_count={post_count}"
+            + (f"，{summary}" if summary else "")
+        )
+    else:
+        console.print(
+            "[dim]已执行首轮监测周期（无 search_func 时无外链帖子，快照可能为「无新数据」）。[/dim]"
+        )
     console.print(
-        "[dim]已执行首轮监测周期（未注入 search_func / NetInsight 时无外链帖子，快照可能为「无新数据」占位）。[/dim]"
-    )
-    console.print(
-        "[yellow]定时抓取：[/yellow]请用系统调度每 N 小时执行 "
-        "``python3 scripts/run_topic_monitor_tick.py``（默认处理全部活跃专题），"
-        "或在编排层注入 ``run_monitoring_cycle(..., search_func=...)`` 对接网察拉数。"
+        "[dim]定时增量：[/dim] ``python scripts/run_topic_monitor_tick.py`` "
+        "（处理全部活跃专题，逻辑与 create 首轮一致）。"
     )
     console.print(
         f"[cyan]下一步：[/cyan] `/monitor status {tid}` 查看状态；"
@@ -379,6 +432,6 @@ def run_monitor_command(raw_query: str | None = None) -> None:
     except Exception as exc:
         console.print(f"[red]/monitor 执行失败: {exc}[/red]")
         console.print(
-            "[yellow]若要接 Supabase/Postgres，请配置 SUPABASE_URL/SUPABASE_KEY "
-            "或 DATABASE_URL/POSTGRES_URL，并先执行 workflow/topic_monitoring_schema.sql。[/yellow]"
+            "[yellow]持久化：专题数据默认保存在 data/topic_monitor_local.db；"
+            "可用环境变量 SONA_TOPIC_MONITOR_SQLITE 指定其它 .db 路径。[/yellow]"
         )
