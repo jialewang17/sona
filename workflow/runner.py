@@ -7,6 +7,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
 
+from tools.analysis_sentiment import sentiment_column_fallback_enabled
 from workflow.budget import estimate_tokens, sentiment_budget_from_env
 from workflow.event_analysis_pipeline import run_event_analysis_pipeline
 
@@ -28,6 +29,15 @@ class EventAnalysisRunRequest:
 
 def _env_flag(name: str, default: str) -> str:
     return str(os.environ.get(name, default)).strip().lower()
+
+
+def _env_truthy(name: str, *, default: str) -> bool:
+    return _env_flag(name, default) in {"1", "true", "yes", "y", "on"}
+
+
+def _sentiment_force_llm() -> bool:
+    """默认强制 LLM；仅当 SONA_SENTIMENT_FORCE_LLM=0 时关闭。"""
+    return _env_truthy("SONA_SENTIMENT_FORCE_LLM", default="1")
 
 
 def _validate_run_request(request: EventAnalysisRunRequest) -> None:
@@ -102,8 +112,9 @@ def run_sentiment_stage(
     t0 = time.time()
     budget = sentiment_budget_from_env(sentiment_timeout_sec)
     force_sentiment_rerun = _should_force_sentiment_rerun(user_query)
-    force_llm_sentiment = _env_flag("SONA_SENTIMENT_FORCE_LLM", "") in {"1", "true", "yes", "y", "on"}
-    prefer_existing_sentiment = _env_flag("SONA_SENTIMENT_PREFER_EXISTING", "") in {"1", "true", "yes", "y", "on"}
+    force_llm_sentiment = _sentiment_force_llm()
+    allow_csv_fallback = sentiment_column_fallback_enabled()
+    prefer_existing_sentiment = _env_truthy("SONA_SENTIMENT_PREFER_EXISTING", default="0")
     event_intro = str(search_plan.get("eventIntroduction") or "")
     est_tokens = estimate_tokens(event_intro)
 
@@ -112,10 +123,16 @@ def run_sentiment_stage(
         clip_chars = max(1200, budget.token_budget * 2)
         event_intro = event_intro[:clip_chars]
         budget.add_action("clip_context", estimated_tokens=est_tokens, clipped_chars=clip_chars)
-        prefer_existing_sentiment = True
-        budget.add_action("prefer_existing_sentiment_column", reason="token_over_budget")
+        if allow_csv_fallback and (not force_llm_sentiment):
+            prefer_existing_sentiment = True
+            budget.add_action("prefer_existing_sentiment_column", reason="token_over_budget")
 
-    prefer_existing_flag = prefer_existing_sentiment and (not force_sentiment_rerun) and (not force_llm_sentiment)
+    prefer_existing_flag = (
+        allow_csv_fallback
+        and prefer_existing_sentiment
+        and (not force_sentiment_rerun)
+        and (not force_llm_sentiment)
+    )
     payload = {
         "eventIntroduction": event_intro,
         "dataFilePath": save_path,
@@ -148,7 +165,7 @@ def run_sentiment_stage(
             "result_file_path": "",
         }
 
-    if str(sentiment_json.get("error", "") or "").strip() and save_path:
+    if str(sentiment_json.get("error", "") or "").strip() and save_path and allow_csv_fallback:
         fallback_json = fallback_from_csv(save_path)
         if not str(fallback_json.get("error", "") or "").strip():
             sentiment_json = fallback_json
@@ -160,8 +177,8 @@ def run_sentiment_stage(
                 message="analysis_sentiment 失败，已用 CSV 情感列生成兜底统计",
                 data={"data_file_path": save_path},
             )
-    elif save_path:
-        # 健康检查：即便 analysis_sentiment 未报错，也避免“小样本/单边失真”污染报告。
+    elif save_path and allow_csv_fallback:
+        # 健康检查：仅在显式允许 CSV 兜底时，才用列统计替换 LLM 结果。
         st = sentiment_json.get("statistics") if isinstance(sentiment_json.get("statistics"), dict) else {}
         source = str(st.get("sentiment_source", "") or "").strip()
         total = int(st.get("total", 0) or 0)
@@ -203,6 +220,12 @@ def run_sentiment_stage(
                         "fallback_total": fb_total,
                     },
                 )
+    elif str(sentiment_json.get("error", "") or "").strip():
+        budget.add_action(
+            "llm_sentiment_required",
+            reason="csv_fallback_disabled",
+            error=str(sentiment_json.get("error", "") or ""),
+        )
 
     elapsed = round(time.time() - t0, 3)
     elapsed_ms = int(elapsed * 1000)

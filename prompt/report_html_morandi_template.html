@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{REPORT_TITLE}} | 舆情智库深度研判</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <style>
         :root {
             --primary: #5d8aa8;         /* 莫兰迪蓝 */
@@ -34,7 +32,6 @@
 
         /* --- Header Section --- */
         header {
-            position: relative;
             background: linear-gradient(135deg, var(--primary), var(--primary-strong));
             color: white;
             padding: 45px 0 60px;
@@ -42,45 +39,6 @@
             border-radius: 0 0 20px 20px;
             box-shadow: 0 10px 30px rgba(74, 111, 165, 0.2);
         }
-        .report-export-toolbar {
-            position: absolute;
-            top: 16px;
-            right: 20px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            z-index: 5;
-        }
-        .report-export-button {
-            width: 36px;
-            height: 36px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid rgba(255, 255, 255, 0.35);
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.18);
-            color: #fff;
-            cursor: pointer;
-            font-size: 17px;
-            line-height: 1;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 8px 20px rgba(31, 41, 55, 0.12);
-            transition: transform .18s ease, background .18s ease, border-color .18s ease;
-        }
-        .report-export-button:hover { background: rgba(255, 255, 255, 0.28); border-color: rgba(255, 255, 255, 0.58); transform: translateY(-1px); }
-        .report-export-button:disabled { opacity: .68; cursor: wait; transform: none; }
-        .report-export-status {
-            max-width: 160px;
-            color: rgba(255, 255, 255, .92);
-            font-size: 12px;
-            white-space: nowrap;
-            opacity: 0;
-            transform: translateY(-2px);
-            transition: opacity .18s ease, transform .18s ease;
-        }
-        .report-export-status.show { opacity: 1; transform: translateY(0); }
-        body.report-exporting .report-export-toolbar { visibility: hidden; }
         .header-content { text-align: center; }
         .event-title { font-size: 2.6rem; font-weight: 800; margin-bottom: 10px; }
         .event-subtitle { font-size: 1.25rem; opacity: 0.9; max-width: 1000px; margin: 0 auto; }
@@ -108,6 +66,29 @@
 
         /* --- Specific Content Elements --- */
         .chart-box { height: 420px; width: 100%; margin-top: 15px; }
+        .emotion-typical-root { margin-top: 6px; margin-bottom: 8px; }
+        .emotion-typical-title { font-size: 0.95rem; font-weight: 700; color: var(--primary-strong); margin: 10px 0 8px; }
+        .emotion-typical-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 12px;
+        }
+        .emotion-typical-card {
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px 14px;
+            background: rgba(93, 138, 168, 0.06);
+            border-left: 4px solid var(--primary);
+        }
+        .emotion-typical-card h4 {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--primary-strong);
+            margin: 0 0 8px;
+        }
+        .emotion-typical-card ul { margin: 0; padding-left: 18px; font-size: 0.82rem; color: var(--text-main); line-height: 1.45; }
+        .emotion-typical-card li { margin-bottom: 6px; word-break: break-word; }
+        .emotion-typical-empty { font-size: 0.85rem; color: var(--text-muted); padding: 8px 0; }
         .wordcloud-box { position: relative; height: 420px; width: 100%; margin-top: 15px; overflow: hidden; border-radius: 12px; background: linear-gradient(180deg, rgba(93,138,168,0.07), rgba(255,255,255,0.8)); border: 1px solid var(--border-color); }
         .wordcloud-box .w {
             position: absolute;
@@ -132,64 +113,17 @@
         .timeline-item { padding: 18px 0; border-bottom: 1px dashed var(--border-color); position: relative; padding-left: 25px; }
         .timeline-item::before { content: "•"; color: var(--accent); position: absolute; left: 0; font-size: 1.8rem; top: 12px; }
         .timeline-time { font-weight: 700; color: var(--primary-strong); margin-bottom: 5px; }
-        .timeline-impact-positive { background: #d4edda; color: #155724; }
-        .timeline-impact-negative { background: #f8d7da; color: #721c24; }
-        .timeline-impact-turn { background: #fff3cd; color: #856404; }
-        .timeline-impact-ferment { background: #d1ecf1; color: #0c5464; }
-        .timeline-evidence { font-size: 12px; color: #6c757d; margin-top: 5px; padding-left: 8px; border-left: 2px solid #4ea5ff; }
-        .emotion-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-top: 12px; }
-        .emotion-card { background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; font-size: 13px; }
-        .emotion-card strong { color: var(--primary-strong); }
-        .action-plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
-        .action-plan-card { background: #f8fafc; border: 1px solid var(--border-color); border-left: 4px solid var(--accent); border-radius: 8px; padding: 14px; }
-        .action-plan-card h4 { color: var(--primary-strong); margin-bottom: 8px; }
-        .action-plan-card ul { padding-left: 18px; font-size: 13px; }
-        .action-plan-card li { margin-bottom: 6px; }
 
         /* --- Footer --- */
         footer { text-align: center; padding: 50px; color: var(--text-muted); border-top: 1px solid var(--border-color); font-size: 0.9rem; }
 
         @media (max-width: 1000px) { .grid-2 { grid-template-columns: 1fr; } }
-        @media (max-width: 640px) {
-            .container { padding: 0 14px; }
-            .report-export-toolbar { top: 10px; right: 12px; }
-            .report-export-button { width: 34px; height: 34px; }
-            .report-export-status { display: none; }
-            .event-title { font-size: 1.9rem; }
-            .section-title { font-size: 1.35rem; }
-            .card { padding: 18px; }
-            .chart-box, .wordcloud-box { height: 340px; }
-        }
-        @page { size: A4 landscape; margin: 8mm; }
-        @media print {
-            html, body {
-                background: #fff !important;
-                padding: 0 !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-            body { padding-bottom: 0 !important; }
-            .report-export-toolbar { display: none !important; }
-            .container { width: 100% !important; max-width: none !important; padding: 0 !important; }
-            header { border-radius: 0 0 16px 16px; box-shadow: none; }
-            .grid-2 { grid-template-columns: 1fr 1fr !important; }
-            section, .card, .kpi-card, .analysis-summary, .chart-box, .wordcloud-box {
-                break-inside: avoid;
-                page-break-inside: avoid;
-            }
-            footer { break-inside: avoid; page-break-inside: avoid; }
-        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <header>
-        <div class="report-export-toolbar" aria-label="报告导出工具">
-            <button class="report-export-button" type="button" onclick="exportReportPDF(event)" title="导出高清 PDF" aria-label="导出高清 PDF">🗒️</button>
-            <button class="report-export-button" type="button" onclick="exportReportImage(event)" title="导出高清长图" aria-label="导出高清长图">📷</button>
-            <span id="reportExportStatus" class="report-export-status" aria-live="polite"></span>
-        </div>
         <div class="header-content">
             <h1 class="event-title">{{REPORT_TITLE}}</h1>
             <p class="event-subtitle">{{REPORT_SUBTITLE}}</p>
@@ -204,7 +138,7 @@
         <div class="kpi-card"><div class="kpi-label">总样本量</div><div class="kpi-value">{{KPI_TOTAL}}</div></div>
         <div class="kpi-card"><div class="kpi-label">影响指数</div><div class="kpi-value">{{KPI_EFFECTIVE}}</div></div>
         <div class="kpi-card"><div class="kpi-label">整体态度</div><div class="kpi-value">{{KPI_POS_RATIO}}</div></div>
-        <div class="kpi-card"><div class="kpi-label">目前阶段</div><div class="kpi-value">{{PHASE_STATUS}}</div></div>
+        <div class="kpi-card"><div class="kpi-label">目前阶段</div><div class="kpi-value">{{KPI_NEG_RATIO}}</div></div>
     </div>
 
     <section>
@@ -224,21 +158,30 @@
 
         <div class="grid-2">
             <div class="card">
-                <h3>情感倾向分析结果</h3>
-                <div id="sentimentChart" class="chart-box"></div>
-                <div id="emotionMechanism" class="analysis-summary" style="display:none;"></div>
+                <h3>情感倾向（正面 / 负面 / 中立）</h3>
+                <div id="sentimentChartCoarse" class="chart-box"></div>
                 <div class="analysis-summary">
                     <h3>简要分析结论</h3>
                     <ul>{{CHART_SENTIMENT_ANALYSIS}}</ul>
                 </div>
             </div>
             <div class="card">
-                <h3>关键时间线节点 (按发生时序)</h3>
-                <ul class="timeline-list" id="timelineList"></ul>
+                <h3>细粒度情绪（愤怒 / 焦虑 / 质疑 / 同情 / 嘲讽 / 支持 / 其他）</h3>
+                <div id="sentimentFineChart" class="chart-box"></div>
+                <div id="emotionTypicalExpressionsRoot" class="emotion-typical-root" aria-label="各情绪典型原文摘录"></div>
                 <div class="analysis-summary">
                     <h3>简要分析结论</h3>
-                    <ul>{{CHART_TIMELINE_ANALYSIS}}</ul>
+                    <ul>{{CHART_SENTIMENT_FINE_ANALYSIS}}</ul>
                 </div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 25px;">
+            <h3>关键时间线节点 (按发生时序)</h3>
+            <ul class="timeline-list" id="timelineList"></ul>
+            <div class="analysis-summary">
+                <h3>简要分析结论</h3>
+                <ul>{{CHART_TIMELINE_ANALYSIS}}</ul>
             </div>
         </div>
 
@@ -326,7 +269,6 @@
             <div class="analysis-summary">
                 <ul>{{RESPONSE_ANALYSIS_BULLETS}}</ul>
             </div>
-            <div style="margin-top:18px;">{{RESPONSE_ACTION_PLAN}}</div>
         </div>
 
         <div class="card">
@@ -359,180 +301,6 @@
         subText: '#6b7280',
         split: 'rgba(107,114,128,0.16)',
     };
-    const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;'
-    }[ch]));
-
-    function reportExportFilename(ext) {
-        const rawTitle = (document.querySelector('.event-title')?.textContent || document.title || '舆情分析报告').trim();
-        const safeTitle = rawTitle.replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, '_').slice(0, 64) || '舆情分析报告';
-        const now = new Date();
-        const stamp = [
-            now.getFullYear(),
-            String(now.getMonth() + 1).padStart(2, '0'),
-            String(now.getDate()).padStart(2, '0'),
-            '_',
-            String(now.getHours()).padStart(2, '0'),
-            String(now.getMinutes()).padStart(2, '0')
-        ].join('');
-        return `${safeTitle}_${stamp}.${ext}`;
-    }
-
-    function setReportExportStatus(text) {
-        const el = document.getElementById('reportExportStatus');
-        if (!el) return;
-        el.textContent = text || '';
-        el.classList.toggle('show', !!text);
-        if (text) {
-            window.clearTimeout(setReportExportStatus._timer);
-            setReportExportStatus._timer = window.setTimeout(() => {
-                el.classList.remove('show');
-            }, 2600);
-        }
-    }
-
-    function setChartToolboxVisible(visible) {
-        Object.values(chartInstances).forEach(chart => {
-            try { chart.setOption({ toolbox: { show: !!visible } }, false); } catch (e) {}
-        });
-    }
-
-    function resizeReportCharts() {
-        Object.values(chartInstances).forEach(chart => {
-            try { chart.resize(); } catch (e) {}
-        });
-    }
-
-    function setExportButtonState(button, loading, label) {
-        if (!button) return;
-        if (!button.dataset.originalHtml) button.dataset.originalHtml = button.innerHTML;
-        button.disabled = !!loading;
-        button.innerHTML = loading ? (label || '…') : button.dataset.originalHtml;
-    }
-
-    function reportExportScale(container) {
-        const dpr = Math.max(1, window.devicePixelRatio || 1);
-        let scale = Math.min(3, Math.max(2, dpr));
-        const w = Math.max(1, container.scrollWidth || container.offsetWidth || 1);
-        const h = Math.max(1, container.scrollHeight || container.offsetHeight || 1);
-        const maxSide = 30000;
-        const maxPixels = 120000000;
-        if (Math.max(w, h) * scale > maxSide) {
-            scale = maxSide / Math.max(w, h);
-        }
-        if (w * h * scale * scale > maxPixels) {
-            scale = Math.sqrt(maxPixels / (w * h));
-        }
-        return Math.max(1.4, Math.min(3, scale));
-    }
-
-    async function prepareReportExport() {
-        window.scrollTo(0, 0);
-        document.body.classList.add('report-exporting');
-        setChartToolboxVisible(false);
-        resizeReportCharts();
-        await new Promise(resolve => setTimeout(resolve, 380));
-        return document.querySelector('.container');
-    }
-
-    function finishReportExport() {
-        document.body.classList.remove('report-exporting');
-        setChartToolboxVisible(true);
-        resizeReportCharts();
-    }
-
-    async function captureReportCanvas(container) {
-        if (!window.html2canvas) {
-            throw new Error('html2canvas_not_loaded');
-        }
-        const scale = reportExportScale(container);
-        return await html2canvas(container, {
-            backgroundColor: '#ffffff',
-            scale,
-            useCORS: true,
-            allowTaint: false,
-            imageTimeout: 15000,
-            logging: false,
-            scrollX: 0,
-            scrollY: -window.scrollY,
-            windowWidth: Math.max(document.documentElement.scrollWidth, container.scrollWidth),
-            windowHeight: Math.max(document.documentElement.scrollHeight, container.scrollHeight)
-        });
-    }
-
-    async function exportReportPDF(evt) {
-        const button = evt?.currentTarget || evt?.target;
-        setExportButtonState(button, true, '…');
-        setReportExportStatus('正在生成 PDF');
-        let prepared = false;
-        try {
-            if (!window.html2canvas || !window.jspdf || !window.jspdf.jsPDF) {
-                setReportExportStatus('打开打印窗口');
-                window.print();
-                return;
-            }
-            const container = await prepareReportExport();
-            prepared = true;
-            const canvas = await captureReportCanvas(container);
-            const pdf = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true });
-            const pageWidth = pdf.internal.pageSize.getWidth();
-            const pageHeight = pdf.internal.pageSize.getHeight();
-            const imgWidth = pageWidth;
-            const imgHeight = canvas.height * imgWidth / canvas.width;
-            const imgData = canvas.toDataURL('image/png', 1.0);
-            let position = 0;
-            let heightLeft = imgHeight;
-            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-            heightLeft -= pageHeight;
-            while (heightLeft > 0) {
-                position -= pageHeight;
-                pdf.addPage();
-                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-                heightLeft -= pageHeight;
-            }
-            pdf.save(reportExportFilename('pdf'));
-            setReportExportStatus('PDF 已生成');
-        } catch (e) {
-            console.error(e);
-            setReportExportStatus('改用浏览器打印');
-            window.print();
-        } finally {
-            if (prepared) finishReportExport();
-            setExportButtonState(button, false);
-        }
-    }
-
-    async function exportReportImage(evt) {
-        const button = evt?.currentTarget || evt?.target;
-        setExportButtonState(button, true, '…');
-        setReportExportStatus('正在生成长图');
-        let prepared = false;
-        try {
-            const container = await prepareReportExport();
-            prepared = true;
-            const canvas = await captureReportCanvas(container);
-            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png', 1.0));
-            if (!blob) throw new Error('image_blob_failed');
-            const link = document.createElement('a');
-            link.download = reportExportFilename('png');
-            link.href = URL.createObjectURL(blob);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.setTimeout(() => URL.revokeObjectURL(link.href), 800);
-            setReportExportStatus('长图已生成');
-        } catch (e) {
-            console.error(e);
-            setReportExportStatus('长图生成失败');
-        } finally {
-            if (prepared) finishReportExport();
-            setExportButtonState(button, false);
-        }
-    }
 
     function baseToolbox() {
         return {
@@ -553,9 +321,12 @@
     }
 
     function initAll() {
-        // 1. 情感饼图
-        chartInstances.sentiment = echarts.init(document.getElementById('sentimentChart'));
-        chartInstances.sentiment.setOption({
+        // 1a. 情感三维饼图（正/负/中立）
+        const finePieData = (REPORT_DATA && REPORT_DATA.charts && Array.isArray(REPORT_DATA.charts.sentimentFine))
+            ? REPORT_DATA.charts.sentimentFine
+            : [];
+        chartInstances.sentimentCoarse = echarts.init(document.getElementById('sentimentChartCoarse'));
+        chartInstances.sentimentCoarse.setOption({
             color: ECHARTS_THEME.colors,
             animationDuration: 900,
             tooltip: { trigger: 'item', confine: true, formatter: '{b}<br/>数量：{c}<br/>占比：{d}%' },
@@ -569,29 +340,88 @@
             }]
         });
 
-        const emotionBox = document.getElementById('emotionMechanism');
-        const sentimentDetail = REPORT_DATA.sentimentDetail || {};
-        const emotionAnalysis = sentimentDetail.emotionAnalysis || {};
-        const emotionKeys = Object.keys(emotionAnalysis);
-        if (emotionBox && (emotionKeys.length || sentimentDetail.negativeDrivers)) {
-            let emotionHtml = '<h3>情绪结构与负面/质疑驱动</h3>';
-            if (sentimentDetail.negativeDrivers) {
-                emotionHtml += `<p style="margin-bottom:10px;"><strong>上升原因：</strong>${escapeHtml(sentimentDetail.negativeDrivers)}</p>`;
-            }
-            if (emotionKeys.length) {
-                emotionHtml += '<div class="emotion-grid">';
-                emotionKeys.forEach(k => {
-                    const item = emotionAnalysis[k] || {};
-                    emotionHtml += `<div class="emotion-card"><strong>${escapeHtml(k)}</strong><br>计数：${escapeHtml(item.count || 0)}<br><span>${escapeHtml(item.typical_expression || '无')}</span></div>`;
-                });
-                emotionHtml += '</div>';
-            }
-            if (sentimentDetail.emotionValidation && sentimentDetail.emotionValidation.sample_size) {
-                emotionHtml += `<p style="margin-top:10px; font-size:12px; color:#6b7280;">抽样校验：样本 ${escapeHtml(sentimentDetail.emotionValidation.sample_size)} 条；${escapeHtml(sentimentDetail.emotionValidation.note || '')}</p>`;
-            }
-            emotionBox.innerHTML = emotionHtml;
-            emotionBox.style.display = 'block';
+        // 1b. 细粒度情绪饼图（六字 + 其他）
+        const fineEl = document.getElementById('sentimentFineChart');
+        if (fineEl && finePieData.length) {
+            chartInstances.sentimentFine = echarts.init(fineEl);
+            chartInstances.sentimentFine.setOption({
+                color: ECHARTS_THEME.colors,
+                animationDuration: 900,
+                tooltip: { trigger: 'item', confine: true, formatter: '{b}<br/>数量：{c}<br/>占比：{d}%' },
+                legend: { type: 'scroll', bottom: '2%', left: 'center', textStyle: { color: ECHARTS_THEME.subText, fontSize: 11 } },
+                toolbox: baseToolbox(),
+                series: [{
+                    type: 'pie',
+                    radius: ['36%', '66%'],
+                    center: ['50%', '46%'],
+                    itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+                    label: { formatter: '{b}\n{d}%', fontSize: 11, color: ECHARTS_THEME.subText },
+                    emphasis: { scale: true, scaleSize: 6, itemStyle: { shadowBlur: 14, shadowColor: 'rgba(0,0,0,0.16)' } },
+                    data: finePieData
+                }]
+            });
+        } else if (fineEl) {
+            fineEl.style.display = 'none';
         }
+
+        // 1c. 细粒度情绪典型表达（模块化卡片；优先 sentiment JSON / row_scores 摘录，每类最多 1 条）
+        (function renderEmotionTypicalExpressions() {
+            const root = document.getElementById('emotionTypicalExpressionsRoot');
+            if (!root) return;
+            const exprMap = (REPORT_DATA && REPORT_DATA.charts && REPORT_DATA.charts.emotionTypicalExpressions)
+                ? REPORT_DATA.charts.emotionTypicalExpressions
+                : {};
+            const order = ['愤怒', '焦虑', '质疑', '同情', '嘲讽', '支持', '其他'];
+            const borderColors = {
+                '愤怒': '#ef4444', '焦虑': '#f59e0b', '质疑': '#8b5cf6', '同情': '#ec4899',
+                '嘲讽': '#64748b', '支持': '#1e90ff', '其他': '#94a3b8',
+            };
+            const fineCounts = {};
+            finePieData.forEach((d) => {
+                if (d && d.name != null) fineCounts[String(d.name)] = Number(d.value) || 0;
+            });
+            const hasExpr = order.some((k) => Array.isArray(exprMap[k]) && exprMap[k].length);
+            const hasFineSlice = order.some((k) => (fineCounts[k] || 0) > 0);
+            if (!hasExpr && !hasFineSlice) {
+                root.innerHTML = '<p class="emotion-typical-empty">（暂无典型表达：目录中缺少情感分析 JSON，或样本无可用正文预览）</p>';
+                return;
+            }
+            root.innerHTML = '';
+            const title = document.createElement('div');
+            title.className = 'emotion-typical-title';
+            title.textContent = '各情绪典型表达（每类 1 条原文摘录）';
+            root.appendChild(title);
+            const grid = document.createElement('div');
+            grid.className = 'emotion-typical-grid';
+            order.forEach((em) => {
+                const items = Array.isArray(exprMap[em]) ? exprMap[em] : [];
+                const sliceN = fineCounts[em] || 0;
+                if (!items.length && sliceN <= 0) return;
+                const card = document.createElement('div');
+                card.className = 'emotion-typical-card';
+                card.style.borderLeftColor = borderColors[em] || 'var(--primary)';
+                const h = document.createElement('h4');
+                h.textContent = em;
+                card.appendChild(h);
+                const ul = document.createElement('ul');
+                const one = items.length ? items.slice(0, 1) : [];
+                if (one.length) {
+                    one.forEach((line) => {
+                        const li = document.createElement('li');
+                        li.textContent = String(line || '');
+                        ul.appendChild(li);
+                    });
+                } else {
+                    const li = document.createElement('li');
+                    li.className = 'emotion-typical-miss';
+                    li.textContent = '该情绪在统计中有占比，但暂无可读正文摘录（多为过短或无预览文本）。';
+                    ul.appendChild(li);
+                }
+                card.appendChild(ul);
+                grid.appendChild(card);
+            });
+            root.appendChild(grid);
+        })();
 
         // 2. 渠道占比饼图（若数据缺失则隐藏）
         const channelEl = document.getElementById('channelChart');
@@ -807,8 +637,6 @@
             legend: { top: '2%', left: 'center', data: ['五维评估'], textStyle: { color: ECHARTS_THEME.subText } },
             toolbox: baseToolbox(),
             radar: {
-                center: ['50%', '58%'],
-                radius: '64%',
                 indicator: [
                     { name: '量', max: 10 }, { name: '质', max: 10 },
                     { name: '人', max: 10 }, { name: '场', max: 10 }, { name: '效', max: 10 }
@@ -834,16 +662,6 @@
         const lifecycleDates = REPORT_DATA.charts.lifecycle.dates || [];
         const lifecycleValues = REPORT_DATA.charts.lifecycle.values || [];
         const lifecycleBoundaries = REPORT_DATA.charts.lifecycle.boundaries || [];
-        const timelineMarkPoints = (REPORT_DATA.timeline || []).map(item => {
-            const idx = lifecycleDates.findIndex(d => String(d).slice(0, 10) === String(item.time || '').slice(0, 10));
-            if (idx < 0) return null;
-            return {
-                name: item.event || '关键节点',
-                coord: [lifecycleDates[idx], lifecycleValues[idx] || 0],
-                value: item.event || '关键节点',
-                itemStyle: { color: item.impact === '负面' ? '#EE6666' : (item.impact === '转折' ? '#FAC858' : '#5470C6') },
-            };
-        }).filter(Boolean).slice(0, 8);
         chartInstances.lifecycle.setOption({
             color: ECHARTS_THEME.colors,
             animationDuration: 1000,
@@ -869,41 +687,18 @@
                     lineStyle: { type: 'dashed', color: 'rgba(107,114,128,0.6)', width: 1.2 },
                     data: lifecycleBoundaries.map(b => ({ xAxis: b.xAxis, name: b.name })),
                 },
-                markPoint: {
-                    symbolSize: 42,
-                    label: { formatter: ({ data }) => data && data.name ? data.name : '', fontSize: 10 },
-                    data: timelineMarkPoints,
-                },
             }]
         });
 
         // 渲染时间线
         const tlList = document.getElementById('timelineList');
         REPORT_DATA.timeline.forEach(item => {
-            let evidenceHtml = item.evidence ? `<div class="timeline-evidence">证据：${escapeHtml(item.evidence)}</div>` : '';
-            let impactClass = '';
-            let impactText = '';
-            if (item.impact === '正面') { impactClass = 'timeline-impact-positive'; impactText = '正面'; }
-            else if (item.impact === '负面') { impactClass = 'timeline-impact-negative'; impactText = '负面'; }
-            else if (item.impact === '转折') { impactClass = 'timeline-impact-turn'; impactText = '转折'; }
-            else if (item.impact === '发酵') { impactClass = 'timeline-impact-ferment'; impactText = '发酵'; }
-            let impactHtml = impactText ? `<span class="timeline-impact ${impactClass}" style="font-size:11px; margin-left:8px; padding:2px 8px; border-radius:12px;">${impactText}</span>` : '';
-            tlList.innerHTML += `<li class="timeline-item">
-                <div class="timeline-time">${escapeHtml(item.time)} ${impactHtml}</div>
-                <div class="timeline-event" style="font-weight:500;">${escapeHtml(item.event)}</div>
-                ${evidenceHtml}
-            </li>`;
+            tlList.innerHTML += `<li class="timeline-item"><div class="timeline-time">${item.time}</div><div>${item.event}</div></li>`;
         });
     }
 
     document.addEventListener('DOMContentLoaded', initAll);
-    window.addEventListener('beforeprint', () => {
-        document.body.classList.add('report-exporting');
-        setChartToolboxVisible(false);
-        resizeReportCharts();
-    });
-    window.addEventListener('afterprint', finishReportExport);
-    window.onresize = resizeReportCharts;
+    window.onresize = () => Object.values(chartInstances).forEach(c => c.resize());
 </script>
 
 </body>

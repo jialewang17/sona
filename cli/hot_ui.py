@@ -39,7 +39,7 @@ def run_hot_command(config_path: Optional[str] = None) -> None:
             )
             console.print()
 
-        # 展示当前热点流程实际使用的 base_url（便于确认走 coding plan）
+        # 展示当前热点流程实际使用的 base_url（model.yaml / 环境变量；非 Coding 时为 compatible-mode）
         base_url = os.environ.get("INSIGHT_ENGINE_BASE_URL") or ""
         if base_url:
             console.print(f"[dim]hot LLM base_url: {base_url}[/dim]")
@@ -49,6 +49,14 @@ def run_hot_command(config_path: Optional[str] = None) -> None:
             console.print(f"[green]✅ 热点报告已生成: {report_path}[/green]")
         else:
             console.print("[yellow]流程已执行，但未返回报告路径。[/yellow]")
+        try:
+            import tools.hottopics as _ht_snap
+
+            jp = getattr(_ht_snap, "LAST_HOT_SNAPSHOT_JSON", None)
+            if jp:
+                console.print(f"[dim]hot JSON 快照: {jp}[/dim]")
+        except Exception:
+            pass
         console.print()
     except Exception as exc:
         console.print(f"[red]❌ 热点流程执行失败: {exc}[/red]")

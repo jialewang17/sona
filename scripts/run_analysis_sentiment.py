@@ -1,4 +1,4 @@
-"""测试脚本：调用 analysis_sentiment 工具分析情感倾向。"""
+"""测试脚本：调用 analysis_sentiment 工具分析情感倾向（0～10 分 + 六类细粒度情绪）。"""
 
 from __future__ import annotations
 
@@ -11,9 +11,67 @@ import os
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-from tools.analysis_sentiment import analysis_sentiment
+from tools.analysis_sentiment import FINE_EMOTIONS, analysis_sentiment
 from utils.path import ensure_task_dirs
 from utils.task_context import set_task_id
+
+
+def _print_emotion_block(statistics: dict) -> None:
+    """打印 statistics 中的细粒度情绪分布（与工具返回字段对齐）。"""
+    counts = statistics.get("emotion_counts")
+    ratios = statistics.get("emotion_ratios")
+    if not isinstance(counts, dict):
+        print("  - 细粒度情绪: statistics 中无 emotion_counts（可能为旧版工具）")
+        return
+    print("  - 细粒度情绪计数 emotion_counts:")
+    for name in list(FINE_EMOTIONS) + ["其他"]:
+        c = counts.get(name, 0)
+        r = (ratios or {}).get(name) if isinstance(ratios, dict) else None
+        if r is not None:
+            print(f"      {name}: {c} ({float(r) * 100:.2f}%)")
+        else:
+            print(f"      {name}: {c}")
+
+
+def _preview_row_scores_from_file(result_file: Path, *, limit: int = 5) -> None:
+    """从完整结果 JSON 中抽样打印 row_scores（含 emotion）。"""
+    try:
+        text = result_file.read_text(encoding="utf-8", errors="replace")
+        data = json.loads(text)
+    except Exception as e:
+        print(f"  [WARN] 无法读取完整结果用于 row_scores 预览: {e}")
+        return
+    rows = data.get("row_scores")
+    if not isinstance(rows, list) or not rows:
+        print("  - row_scores: 无或格式异常")
+        return
+    print(f"  - row_scores 抽样（前 {limit} 条，含 emotion）:")
+    shown = 0
+    for item in rows:
+        if shown >= limit:
+            break
+        if not isinstance(item, dict):
+            continue
+        idx = item.get("row_index")
+        score = item.get("score")
+        emo = item.get("emotion")
+        preview = str(item.get("text_preview") or "")[:60]
+        print(f"      row={idx} score={score} emotion={emo} preview={preview!r}")
+        shown += 1
+    fine_set = set(FINE_EMOTIONS)
+    bad = 0
+    for item in rows:
+        if not isinstance(item, dict):
+            continue
+        s, emo = item.get("score"), item.get("emotion")
+        if s is None:
+            continue
+        if emo not in fine_set:
+            bad += 1
+    if bad:
+        print(f"  [WARN] row_scores 中有 {bad} 条 score 非空但 emotion 不在六字集合内")
+    else:
+        print("  [OK] row_scores 中已打分行的 emotion 字段均在预期集合内")
 
 
 def main() -> None:
@@ -55,7 +113,7 @@ def main() -> None:
         ]
         
         print("=" * 80)
-        print("analysis_sentiment 工具测试")
+        print("analysis_sentiment 工具测试（含愤怒/焦虑/质疑/同情/嘲讽/支持）")
         print("=" * 80)
 
         # 并发相关默认参数（可根据本机/限流情况调整）
@@ -151,6 +209,7 @@ def main() -> None:
                                 print(f"  - 已分析平均分: {avg_score_analyzed}")
                             if score_scale:
                                 print(f"  - {score_scale}")
+                            _print_emotion_block(statistics)
                         else:
                             print("  - 统计信息: 无")
 
@@ -189,10 +248,26 @@ def main() -> None:
                             if result_file.exists():
                                 print(f"  [OK] 结果文件已保存: {result_file_path}")
                                 print(f"  - 文件大小: {result_file.stat().st_size} 字节")
+                                _preview_row_scores_from_file(result_file, limit=5)
                             else:
                                 print(f"  [WARN] 结果文件路径存在但文件未找到: {result_file_path}")
                         else:
                             print("  [WARN] 未返回结果文件路径")
+
+                        coarse_pie = parsed.get("coarse_pie_chart_path", "")
+                        fine_pie = parsed.get("fine_emotion_pie_chart_path", "")
+                        if coarse_pie or fine_pie:
+                            print("  - 饼图数据文件:")
+                            for label, p in (
+                                ("正/负/中立", coarse_pie),
+                                ("六类细粒度情绪", fine_pie),
+                            ):
+                                if not p:
+                                    print(f"      {label}: (未返回路径)")
+                                    continue
+                                pf = Path(p)
+                                ok = pf.exists()
+                                print(f"      {label}: {p} {'[OK]' if ok else '[WARN] 未找到文件'}")
                         
                     except json.JSONDecodeError:
                         print("[WARN] 返回结果不是有效的 JSON:")

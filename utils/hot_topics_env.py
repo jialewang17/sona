@@ -10,10 +10,37 @@ import yaml
 from utils.env_loader import get_env_config
 from utils.path import get_config_path, get_project_root
 
+_DASHSCOPE_COMPATIBLE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+
 
 def _set_if_absent(key: str, value: Optional[str]) -> None:
     if value and key not in os.environ:
         os.environ[key] = value
+
+
+def _normalize_dashscope_base_url(url: str) -> str:
+    """将已废弃的 coding.dashscope 端点统一为按量 compatible-mode。"""
+    raw = str(url or "").strip()
+    if not raw:
+        return _DASHSCOPE_COMPATIBLE_URL
+    if "coding.dashscope.aliyuncs.com" in raw:
+        return _DASHSCOPE_COMPATIBLE_URL
+    return raw
+
+
+def _sanitize_legacy_dashscope_endpoints() -> None:
+    """清理 .env 中遗留的 Coding Plan / baseurl 配置，避免热点流程误用错误端点。"""
+    for key in (
+        "INSIGHT_ENGINE_BASE_URL",
+        "QUERY_ENGINE_BASE_URL",
+        "REPORT_ENGINE_BASE_URL",
+        "OPENAI_BASE_URL",
+        "baseurl",
+        "CODINGPLAN_BASE_URL",
+    ):
+        val = str(os.environ.get(key) or "").strip()
+        if val and "coding.dashscope.aliyuncs.com" in val:
+            os.environ[key] = _DASHSCOPE_COMPATIBLE_URL
 
 
 def prepare_hot_topics_environment() -> None:
@@ -22,14 +49,16 @@ def prepare_hot_topics_environment() -> None:
 
     1. 通过 EnvConfig 加载项目根目录 .env（与主 Agent 一致）。
     2. 将 Sona 使用的变量名映射到 hottopics 内 InsightNode / ForumNode 所需的
-       INSIGHT_ENGINE_*、QUERY_ENGINE_*（OpenAI 兼容接口）。
+       INSIGHT_ENGINE_*、QUERY_ENGINE_*（OpenAI 兼容接口，通义走 compatible-mode）。
 
     优先级（仅当对应 INSIGHT_/QUERY_ 未显式设置时填充）：
+    - QWEN_APIKEY / model.yaml tools profile → DashScope compatible-mode
     - KIMI_API_KEY / KIMI_APIKEY → Moonshot
     - OPENAI_API_KEY / OPENAI_APIKEY → OpenAI 官方
     - DEEPSEEK_APIKEY → DeepSeek
     """
     env = get_env_config()
+    _sanitize_legacy_dashscope_endpoints()
 
     kimi = os.environ.get("KIMI_API_KEY") or os.environ.get("KIMI_APIKEY")
     openai = os.environ.get("OPENAI_API_KEY") or os.environ.get("OPENAI_APIKEY")
@@ -38,7 +67,6 @@ def prepare_hot_topics_environment() -> None:
     moonshot_base = "https://api.moonshot.cn/v1"
     moonshot_model = os.environ.get("KIMI_MODEL_NAME") or os.environ.get("KIMI_MODEL") or "moonshot-v1-8k"
 
-    # 优先：从 config/model.yaml 读取 tools profile（在 hottopics 里使用 ChatOpenAI，所以需要 OpenAI compatible base_url）
     if not os.environ.get("INSIGHT_ENGINE_API_KEY"):
         model_cfg_path = get_config_path("model.yaml")
         if model_cfg_path.exists():
@@ -55,52 +83,42 @@ def prepare_hot_topics_environment() -> None:
                     api_key_env = str(tools_block.get("api_key_env") or "").strip()
                     api_key = env.get_api_key(api_key_env) if api_key_env else None
 
-                    # 仅对 OpenAI-Compatible 的 provider 使用 ChatOpenAI
                     if provider in {"qwen", "openai", "deepseek", "dashscope", "kimi"} and api_key:
-                        base_url = str(tools_block.get("base_url") or "").strip()
+                        base_url = _normalize_dashscope_base_url(str(tools_block.get("base_url") or "").strip())
                         model_name = str(tools_block.get("model") or "").strip()
 
                         _set_if_absent("INSIGHT_ENGINE_API_KEY", api_key)
 
-                        # 强制：Qwen coding plan 必须使用指定 base_url，确保走 coding plan 额度
-                        if provider == "qwen":
-                            _set_if_absent("INSIGHT_ENGINE_BASE_URL", "https://coding.dashscope.aliyuncs.com/v1")
+                        if provider in {"qwen", "dashscope"}:
+                            _set_if_absent("INSIGHT_ENGINE_BASE_URL", base_url or _DASHSCOPE_COMPATIBLE_URL)
                         elif base_url:
                             _set_if_absent("INSIGHT_ENGINE_BASE_URL", base_url)
 
                         if model_name:
                             _set_if_absent("INSIGHT_ENGINE_MODEL_NAME", model_name)
             except Exception:
-                # 读配置失败时走下方的简单兜底逻辑
                 pass
 
-    # 强制：如果用户使用 QWEN coding plan 的单一额度（QWEN_APIKEY），
-    # 即使没有 model.yaml，也要把 base_url 强制到 coding plan。
-    # 兼容两套命名：
-    # 1) sona：QWEN_APIKEY / QWEN_MODEL_NAME
-    # 2) bjtupubclaw：APIKEY / baseurl（也可能是 CODINGPLAN_*）
     qwen = (
         os.environ.get("QWEN_APIKEY")
         or os.environ.get("QWEN_API_KEY")
-        or os.environ.get("CODINGPLAN_API_KEY")
+        or os.environ.get("DASHSCOPE_APIKEY")
         or os.environ.get("APIKEY")
     )
     qwen_model = (
         os.environ.get("QWEN_MODEL_NAME")
         or os.environ.get("QWEN_MODEL")
-        or os.environ.get("CODINGPLAN_MODEL_NAME")
-        or os.environ.get("CODINGPLAN_MODEL")
-        or "qwen3.5-plus"
+        or os.environ.get("INSIGHT_ENGINE_MODEL_NAME")
+        or "qwen-plus"
     )
-    coding_plan_base_url = "https://coding.dashscope.aliyuncs.com/v1"
+    legacy_base = _normalize_dashscope_base_url(str(os.environ.get("baseurl") or "").strip())
 
     if qwen:
         _set_if_absent("INSIGHT_ENGINE_API_KEY", qwen)
         _set_if_absent("INSIGHT_ENGINE_MODEL_NAME", qwen_model)
-        # 强制覆盖 base_url：避免走 compatible-mode 导致错误计费
-        os.environ["INSIGHT_ENGINE_BASE_URL"] = coding_plan_base_url
+        if not str(os.environ.get("INSIGHT_ENGINE_BASE_URL") or "").strip():
+            os.environ["INSIGHT_ENGINE_BASE_URL"] = legacy_base or _DASHSCOPE_COMPATIBLE_URL
 
-    # 兜底：如果仍未设置，再用 KIMI/OPENAI/DEEPSEEK 的旧映射规则
     if not os.environ.get("INSIGHT_ENGINE_API_KEY"):
         if kimi:
             _set_if_absent("INSIGHT_ENGINE_API_KEY", kimi)
@@ -121,18 +139,20 @@ def prepare_hot_topics_environment() -> None:
                 os.environ.get("DEEPSEEK_MODEL") or "deepseek-chat",
             )
 
-    # QUERY_NODE 使用同一套 key/base_url/model（避免用户重复配置）
     if not os.environ.get("QUERY_ENGINE_API_KEY") and os.environ.get("INSIGHT_ENGINE_API_KEY"):
         _set_if_absent("QUERY_ENGINE_API_KEY", os.environ["INSIGHT_ENGINE_API_KEY"])
         _set_if_absent("QUERY_ENGINE_MODEL_NAME", os.environ.get("INSIGHT_ENGINE_MODEL_NAME", moonshot_model))
-        # 若 Qwen 强制了 coding plan，则也强制 QUERY 使用同一 base_url
-        os.environ["QUERY_ENGINE_BASE_URL"] = os.environ.get("INSIGHT_ENGINE_BASE_URL", moonshot_base)
+        if not str(os.environ.get("QUERY_ENGINE_BASE_URL") or "").strip():
+            os.environ["QUERY_ENGINE_BASE_URL"] = os.environ.get("INSIGHT_ENGINE_BASE_URL", moonshot_base)
 
-    # 若用户只配置了 QWEN_APIKEY（但 model.yaml 不可读），仍强制 base_url 为 coding plan
-    if os.environ.get("QWEN_APIKEY") and not os.environ.get("INSIGHT_ENGINE_BASE_URL"):
-        _set_if_absent("INSIGHT_ENGINE_BASE_URL", "https://coding.dashscope.aliyuncs.com/v1")
-    if os.environ.get("QWEN_APIKEY") and not os.environ.get("QUERY_ENGINE_BASE_URL"):
-        _set_if_absent("QUERY_ENGINE_BASE_URL", "https://coding.dashscope.aliyuncs.com/v1")
+    insight_base = str(os.environ.get("INSIGHT_ENGINE_BASE_URL") or "").strip()
+    if insight_base:
+        os.environ["INSIGHT_ENGINE_BASE_URL"] = _normalize_dashscope_base_url(insight_base)
+    query_base = str(os.environ.get("QUERY_ENGINE_BASE_URL") or "").strip()
+    if query_base:
+        os.environ["QUERY_ENGINE_BASE_URL"] = _normalize_dashscope_base_url(query_base)
+
+    _sanitize_legacy_dashscope_endpoints()
 
 
 def ensure_hot_topics_cwd() -> None:

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import ast
 import html
 import json
 import os
@@ -27,56 +26,6 @@ _SENTIMENT_COLORS = {
     "中立": "#22c55e",
     "中性": "#22c55e",
     "负面": "#ef4444",
-}
-
-_REPORT_GENERIC_KEYWORDS = {
-    "中国",
-    "国家",
-    "发展",
-    "工作",
-    "生活",
-    "社会",
-    "全球",
-    "世界",
-    "时间",
-    "市场",
-    "企业",
-    "公司",
-    "服务",
-    "项目",
-    "技术",
-    "人员",
-    "数据",
-    "国际",
-    "提供",
-    "家庭",
-    "相关",
-    "经济",
-    "能力",
-    "信息",
-    "平台",
-    "专业",
-    "建设",
-    "岗位",
-    "管理",
-    "行业",
-    "方式",
-    "快乐",
-    "电话",
-    "妈妈",
-    "政策",
-    "科技",
-    "教育",
-    "持续",
-    "领域",
-    "支持",
-    "产业",
-    "幸福",
-    "地区",
-    "历史",
-    "增长",
-    "万事兴",
-    "家和万事兴",
 }
 
 _PLACEHOLDER_KEYS = frozenset(
@@ -119,6 +68,7 @@ _PLACEHOLDER_KEYS = frozenset(
         "INTRO_TRIGGERS",
         "SUMMARY_BULLETS",
         "CHART_SENTIMENT_ANALYSIS",
+        "CHART_SENTIMENT_FINE_ANALYSIS",
         "CHART_TIMELINE_ANALYSIS",
         "CHART_VOLUME_ANALYSIS",
         "CHART_REGION_ANALYSIS",
@@ -129,18 +79,17 @@ _PLACEHOLDER_KEYS = frozenset(
         "CHART_LIFECYCLE_ANALYSIS",
         "THEORY_BUTTERFLY",
         "RESPONSE_ANALYSIS_BULLETS",
-        "RESPONSE_ACTION_PLAN",
         "RECAP_DISCOURSE",
         "RECAP_TRENDS",
         "RECAP_DRIVERS_BULLETS",
         "DATA_SOURCE",
     }
 )
-# 叙事模型优先区中「微博智搜 → structured.report_bridge」的 template_hooks 与此处键名对齐，便于将外部讨论线索汇入对应段落。
 
 _LIST_PLACEHOLDER_KEYS: Set[str] = {
     "SUMMARY_BULLETS",
     "CHART_SENTIMENT_ANALYSIS",
+    "CHART_SENTIMENT_FINE_ANALYSIS",
     "CHART_TIMELINE_ANALYSIS",
     "CHART_VOLUME_ANALYSIS",
     "CHART_REGION_ANALYSIS",
@@ -182,70 +131,282 @@ def _get_json_by_name(json_files: List[Dict[str, Any]], *candidates: str) -> Opt
     return None
 
 
-def _find_sentiment_json(json_files: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-    for item in json_files:
-        fn = str(item.get("filename", "") or "").strip().lower()
-        if "sentiment" in fn and fn.endswith(".json"):
-            c = item.get("content")
-            if isinstance(c, dict):
-                return c
+def _extract_emotion_typical_dict(sent: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """典型表达可能在顶层，也可能在 statistics 内（pipeline fallback 文件常见后者）。"""
+    et = sent.get("emotion_typical_expressions")
+    if isinstance(et, dict):
+        return et
+    st = sent.get("statistics")
+    if isinstance(st, dict):
+        nested = st.get("emotion_typical_expressions")
+        if isinstance(nested, dict):
+            return nested
     return None
 
 
-def _existing_column_sentiment_counts(stats: dict[str, Any]) -> Optional[Tuple[int, int, int]]:
-    """从 sampling.existing_distribution 读取数据源情感列分布（若存在）。"""
-    samp = stats.get("sampling") if isinstance(stats.get("sampling"), dict) else {}
-    ex = samp.get("existing_distribution") if isinstance(samp.get("existing_distribution"), dict) else {}
-    cts = ex.get("counts") if isinstance(ex.get("counts"), dict) else {}
-    if not cts:
-        return None
-    pos = int(cts.get("正面", 0) or 0)
-    neu = int(cts.get("中立", 0) or 0) or int(cts.get("中性", 0) or 0)
-    neg = int(cts.get("负面", 0) or 0)
-    if pos + neu + neg <= 0:
-        return None
-    return pos, neu, neg
+def _sentiment_has_nonempty_typical(content: Dict[str, Any]) -> bool:
+    et = _extract_emotion_typical_dict(content)
+    if not isinstance(et, dict):
+        return False
+    for v in et.values():
+        if isinstance(v, list) and any(str(x).strip() for x in v):
+            return True
+    return False
 
 
-def _effective_sentiment_counts_from_statistics(stats: dict[str, Any]) -> tuple[int, int, int]:
+def _coerce_sentiment_bucket_count(stats: Dict[str, Any], bucket: str) -> int:
+    """兼容 analysis_sentiment 与 pipeline CSV 兜底两种 statistics 结构。"""
+    flat_key = f"{bucket}_count"
+    if stats.get(flat_key) is not None:
+        return _safe_int(stats.get(flat_key), 0)
+    block = stats.get(bucket)
+    if isinstance(block, dict):
+        return _safe_int(block.get("count", 0), 0)
+    dist = stats.get("distribution")
+    if isinstance(dist, dict):
+        for label, payload in dist.items():
+            if str(label).strip() != bucket:
+                continue
+            if isinstance(payload, dict):
+                return _safe_int(payload.get("count", 0), 0)
+            return _safe_int(payload, 0)
+    return 0
+
+
+def _coerce_sentiment_bucket_ratio(stats: Dict[str, Any], bucket: str, *, total: int, count: int) -> float:
+    flat_key = f"{bucket}_ratio"
+    raw = stats.get(flat_key)
+    if raw is not None:
+        try:
+            val = float(raw)
+        except Exception:
+            val = 0.0
+        return max(0.0, min(1.0, val))
+    block = stats.get(bucket)
+    if isinstance(block, dict) and block.get("pct") is not None:
+        try:
+            return max(0.0, min(1.0, float(block.get("pct", 0.0)) / 100.0))
+        except Exception:
+            pass
+    if total > 0 and count >= 0:
+        return round(count / float(total), 4)
+    return 0.0
+
+
+def _normalize_sentiment_statistics(stats: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """
-    统一情感三分类条数口径：当顶层 positive/negative/neutral_count 因抽样解析失败
-    塌缩为「全中立」等退化形态时，优先采用 sampling.existing_distribution.counts
-    （数据源自带情感列），保证 KPI、饼图与叙事引用同源。
+    将 statistics 规范为报告模板统一读取的扁平字段。
+    pipeline ``_fallback_sentiment_from_csv`` 使用 positive/negative/neutral 嵌套对象，
+    ``analysis_sentiment`` 使用 positive_count 等扁平字段。
     """
-    pos = int(stats.get("positive_count", 0) or 0)
-    neu = int(stats.get("neutral_count", 0) or 0)
-    neg = int(stats.get("negative_count", 0) or 0)
-    total = int(stats.get("total", 0) or 0)
-    ex = _existing_column_sentiment_counts(stats)
-    if not ex:
-        return pos, neu, neg
-    ep, em, en = ex
-    ex_sum = ep + em + en
-    if ex_sum <= 0:
-        return pos, neu, neg
-    top_sum = pos + neu + neg
-    parse_failed = float(stats.get("parse_success_rate", 1.0) or 1.0) < 0.001
-    collapsed_neutral = total > 0 and neg == 0 and pos == 0 and neu >= total - 1 and (ep > 0 or en > 0)
-    top_mismatch = total > 0 and abs(top_sum - total) > max(5, int(total * 0.02))
-    ex_matches_total = abs(ex_sum - total) <= max(5, int(total * 0.02))
-    if (collapsed_neutral or top_mismatch or parse_failed) and ex_matches_total:
-        return ep, em, en
-    return pos, neu, neg
+    if not isinstance(stats, dict):
+        return {}
+    total = _safe_int(stats.get("total", 0), 0)
+    pos = _coerce_sentiment_bucket_count(stats, "positive")
+    neg = _coerce_sentiment_bucket_count(stats, "negative")
+    neu = _coerce_sentiment_bucket_count(stats, "neutral")
+    if total <= 0 and (pos + neg + neu) > 0:
+        total = pos + neg + neu
+    out = dict(stats)
+    out["total"] = total
+    out["positive_count"] = pos
+    out["negative_count"] = neg
+    out["neutral_count"] = neu
+    out["positive_ratio"] = _coerce_sentiment_bucket_ratio(stats, "positive", total=total, count=pos)
+    out["negative_ratio"] = _coerce_sentiment_bucket_ratio(stats, "negative", total=total, count=neg)
+    out["neutral_ratio"] = _coerce_sentiment_bucket_ratio(stats, "neutral", total=total, count=neu)
+    return out
 
 
-def _statistics_effective_ratios(stats: dict[str, Any]) -> dict[str, Any]:
-    pos, neu, neg = _effective_sentiment_counts_from_statistics(stats)
-    tot = max(1, pos + neu + neg)
-    return {
-        "positive_count": pos,
-        "neutral_count": neu,
-        "negative_count": neg,
-        "positive_ratio": pos / tot,
-        "neutral_ratio": neu / tot,
-        "negative_ratio": neg / tot,
-        "total": tot,
-    }
+def _find_sentiment_json_item(
+    json_files: List[Dict[str, Any]],
+) -> Optional[Tuple[str, Dict[str, Any]]]:
+    """选取完整情感分析 JSON（文件名, 内容）；排除饼图切片。优先含非空 emotion_typical_expressions 的文件。"""
+    candidates: List[Tuple[str, Dict[str, Any]]] = []
+    for item in json_files:
+        fn = str(item.get("filename", "") or "").strip()
+        lfn = fn.lower()
+        if not lfn.endswith(".json") or "sentiment" not in lfn:
+            continue
+        if "_pie_coarse" in lfn or "_pie_fine" in lfn:
+            continue
+        c = item.get("content")
+        if not isinstance(c, dict):
+            continue
+        candidates.append((fn, c))
+    if not candidates:
+        return None
+
+    def sort_key(item_fn_content: Tuple[str, Dict[str, Any]]) -> Tuple[int, int, int, str]:
+        fn, c = item_fn_content
+        lfn = fn.lower()
+        rank = 0
+        if "sentiment_analysis" in lfn:
+            rank += 10
+        st = c.get("statistics")
+        if isinstance(st, dict) and st.get("positive_count") is not None:
+            rank += 4
+        if isinstance(c.get("row_scores"), list) and c["row_scores"]:
+            rank += 3
+        typical_boost = 25 if _sentiment_has_nonempty_typical(c) else 0
+        return (typical_boost + rank, rank, len(fn), fn)
+
+    candidates.sort(key=sort_key, reverse=True)
+    return candidates[0]
+
+
+def _find_sentiment_json(json_files: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """选取完整情感分析 JSON；排除 *_pie_coarse.json / *_pie_fine.json 等饼图切片文件。"""
+    pair = _find_sentiment_json_item(json_files)
+    return pair[1] if pair else None
+
+
+def _typical_expressions_from_row_scores(sent: Dict[str, Any]) -> Dict[str, List[str]]:
+    """主 JSON 无典型表达字段时，用 row_scores 的 text_preview 复用分析侧抽取逻辑。"""
+    rows = sent.get("row_scores")
+    if not isinstance(rows, list) or not rows:
+        return {}
+    try:
+        from tools.analysis_sentiment import _extract_emotion_typical_expressions
+    except Exception:
+        return {}
+    meta: List[Dict[str, Any]] = []
+    for r in rows:
+        if not isinstance(r, dict):
+            continue
+        prev = str(r.get("text_preview") or "").strip()
+        body = prev[:-3].strip() if prev.endswith("...") and len(prev) > 3 else prev
+        meta.append({"cleaned": body or prev, "emotion": r.get("emotion"), "score": r.get("score")})
+    return _extract_emotion_typical_expressions(meta, per_emotion=4, max_snippet_chars=120)
+
+
+def _pie_fine_typical_for_sentiment(
+    json_files: List[Dict[str, Any]], main_filename: str
+) -> Optional[Dict[str, Any]]:
+    """优先选取与主情感 JSON 同批次的 *_pie_fine.json（文件名 stem 一致）。"""
+    main_stem = Path(main_filename).stem
+    preferred_name = f"{main_stem}_pie_fine.json"
+    ordered: List[Tuple[int, int, str, Dict[str, Any]]] = []
+    for item in json_files:
+        fn = str(item.get("filename", "") or "").strip()
+        lfn = fn.lower()
+        if "_pie_fine" not in lfn or not lfn.endswith(".json"):
+            continue
+        c = item.get("content")
+        if not isinstance(c, dict) or not isinstance(c.get("typical_expressions"), dict):
+            continue
+        pri = 0
+        if fn.lower() == preferred_name.lower():
+            pri = 10
+        elif lfn.startswith(main_stem.lower() + "_"):
+            pri = 5
+        ordered.append((pri, len(fn), fn, c))
+    if not ordered:
+        return None
+    ordered.sort(key=lambda x: (x[0], x[1]), reverse=True)
+    return ordered[0][3].get("typical_expressions") if isinstance(ordered[0][3], dict) else None
+
+
+_FINE_EMOTION_LABELS: Tuple[str, ...] = ("愤怒", "焦虑", "质疑", "同情", "嘲讽", "支持", "其他")
+_FINE_EMOTION_COLORS: Tuple[str, ...] = (
+    "#ef4444",
+    "#f59e0b",
+    "#8b5cf6",
+    "#ec4899",
+    "#64748b",
+    "#1e90ff",
+    "#94a3b8",
+)
+
+
+def _build_fine_sentiment_pie_series(json_files: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """六类细粒度情绪 + 其他 → ECharts pie data；优先 statistics，其次独立 *_pie_fine.json。"""
+    sent = _find_sentiment_json(json_files)
+    counts: Dict[str, int] = {}
+    if sent and isinstance(sent.get("statistics"), dict):
+        st_norm = _normalize_sentiment_statistics(sent["statistics"])
+        ec = st_norm.get("emotion_counts")
+        if isinstance(ec, dict):
+            for k, v in ec.items():
+                counts[str(k)] = _safe_int(v, 0)
+    if not counts or sum(counts.values()) <= 0:
+        for item in json_files:
+            fn = str(item.get("filename", "") or "").strip().lower()
+            if "_pie_fine" not in fn or not fn.endswith(".json"):
+                continue
+            c = item.get("content")
+            if not isinstance(c, dict):
+                continue
+            slices = c.get("slices")
+            if not isinstance(slices, list):
+                continue
+            tmp: Dict[str, int] = {}
+            for s in slices:
+                if not isinstance(s, dict):
+                    continue
+                lab = str(s.get("label", s.get("name", "")) or "").strip()
+                tmp[lab] = _safe_int(s.get("count", s.get("value", 0)), 0)
+            if sum(tmp.values()) > 0:
+                counts = tmp
+                break
+
+    out: List[Dict[str, Any]] = []
+    for i, lab in enumerate(_FINE_EMOTION_LABELS):
+        v = _safe_int(counts.get(lab, 0), 0)
+        color = _FINE_EMOTION_COLORS[i % len(_FINE_EMOTION_COLORS)]
+        out.append({"value": v, "name": lab, "itemStyle": {"color": color}})
+    if sum(x["value"] for x in out) <= 0:
+        return [{"value": 1, "name": "其他", "itemStyle": {"color": "#94a3b8"}}]
+    return out
+
+
+def _emotion_typical_dict_nonempty(raw: Optional[Dict[str, Any]]) -> bool:
+    if not isinstance(raw, dict):
+        return False
+    for v in raw.values():
+        if isinstance(v, list) and any(str(x).strip() for x in v):
+            return True
+    return False
+
+
+def _load_emotion_typical_expressions(json_files: List[Dict[str, Any]]) -> Dict[str, List[str]]:
+    """从 sentiment 主 JSON、row_scores 兜底或同批次 *_pie_fine.json 读取典型表达。"""
+    out: Dict[str, List[str]] = {lab: [] for lab in _FINE_EMOTION_LABELS}
+    pair = _find_sentiment_json_item(json_files)
+    raw: Optional[Dict[str, Any]] = None
+    main_fn = ""
+    sent: Optional[Dict[str, Any]] = None
+    if pair:
+        main_fn, sent = pair
+        extracted = _extract_emotion_typical_dict(sent)
+        if isinstance(extracted, dict):
+            raw = extracted
+        if not _emotion_typical_dict_nonempty(raw) and sent is not None:
+            derived = _typical_expressions_from_row_scores(sent)
+            if _emotion_typical_dict_nonempty(derived):
+                raw = derived
+    if not _emotion_typical_dict_nonempty(raw) and main_fn:
+        pie_tex = _pie_fine_typical_for_sentiment(json_files, main_fn)
+        if _emotion_typical_dict_nonempty(pie_tex):
+            raw = pie_tex
+    if not _emotion_typical_dict_nonempty(raw):
+        for item in json_files:
+            fn = str(item.get("filename", "") or "").strip().lower()
+            if "_pie_fine" not in fn or not fn.endswith(".json"):
+                continue
+            c = item.get("content")
+            if isinstance(c, dict) and isinstance(c.get("typical_expressions"), dict):
+                cand = c["typical_expressions"]
+                if _emotion_typical_dict_nonempty(cand):
+                    raw = cand
+                    break
+    if not isinstance(raw, dict):
+        return out
+    for lab in _FINE_EMOTION_LABELS:
+        v = raw.get(lab)
+        if isinstance(v, list):
+            out[lab] = [str(x).strip() for x in v if str(x).strip()][:8]
+    return out
 
 
 def _find_timeline_json(json_files: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
@@ -370,8 +531,12 @@ def build_report_config_from_json_files(json_files: List[Dict[str, Any]]) -> Dic
     sentiment: List[Dict[str, Any]] = []
     sent_obj = _find_sentiment_json(json_files)
     if sent_obj:
-        stats = sent_obj.get("statistics") if isinstance(sent_obj.get("statistics"), dict) else {}
-        pos, neu, neg = _effective_sentiment_counts_from_statistics(stats)
+        stats = _normalize_sentiment_statistics(
+            sent_obj.get("statistics") if isinstance(sent_obj.get("statistics"), dict) else {}
+        )
+        pos = int(stats.get("positive_count", 0) or 0)
+        neg = int(stats.get("negative_count", 0) or 0)
+        neu = int(stats.get("neutral_count", 0) or 0)
         if pos == 0 and neg == 0 and neu == 0:
             pass
         else:
@@ -446,25 +611,14 @@ def build_report_config_from_json_files(json_files: List[Dict[str, Any]]) -> Dic
             t = str(row.get("time", "") or "").strip()
             ev = str(row.get("event", "") or "").strip()
             if t or ev:
-                timeline_out.append(
-                    {
-                        "time": t or "—",
-                        "event": ev or "—",
-                        "evidence": str(row.get("evidence", "") or "").strip(),
-                        "impact": str(row.get("impact", "") or "").strip(),
-                    }
-                )
-
-    keyword_diagnostics = _keyword_quality_diagnostics(keywords_out)
-    keyword_display = _curate_report_keywords(keywords_out, keyword_diagnostics)
+                timeline_out.append({"time": t or "—", "event": ev or "—"})
 
     return {
         "sentiment": sentiment or [{"value": 1, "name": "中立", "itemStyle": {"color": "#22c55e"}}],
         "trend": {"dates": trend_dates or ["—"], "values": trend_values or [0]},
         "regions": {"names": region_names or ["—"], "counts": region_counts or [0]},
-        "keywords": keyword_display or keywords_out or [{"word": "暂无关键词", "count": 0, "rel": "—"}],
-        "keywordDiagnostics": keyword_diagnostics,
-        "timeline": timeline_out or [{"time": "—", "event": "暂无时间线数据"}],
+        "keywords": keywords_out or [{"word": "证据不足", "count": 0, "rel": "—"}],
+        "timeline": timeline_out or [{"time": "—", "event": "未找到时间线分析 JSON，证据不足。"}],
     }
 
 
@@ -487,42 +641,6 @@ def _safe_int_from_text(v: Any, default: int = 0) -> int:
         return int(m.group(0))
     except Exception:
         return default
-
-
-def _is_report_generic_keyword(word: str) -> bool:
-    s = re.sub(r"\s+", "", str(word or "").strip())
-    if not s:
-        return True
-    if s in _REPORT_GENERIC_KEYWORDS:
-        return True
-    if len(s) <= 1:
-        return True
-    if re.fullmatch(r"\d+(?:\.\d+)?", s):
-        return True
-    return False
-
-
-def _keyword_quality_diagnostics(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
-    top = [str(x.get("word", "") or "").strip() for x in rows[:20] if isinstance(x, dict)]
-    generic_terms = [w for w in top if _is_report_generic_keyword(w)]
-    ratio = round(len(generic_terms) / float(max(1, len(top))), 4)
-    return {
-        "top_count": len(top),
-        "generic_top_ratio": ratio,
-        "generic_terms": generic_terms[:12],
-        "pollution_suspected": ratio >= 0.35,
-    }
-
-
-def _curate_report_keywords(rows: List[Dict[str, Any]], diagnostics: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """When generic terms dominate top keywords, keep the cloud anchored to topic-bearing terms."""
-    if not rows:
-        return []
-    suspected = bool(diagnostics.get("pollution_suspected", False))
-    if not suspected:
-        return rows
-    curated = [x for x in rows if isinstance(x, dict) and not _is_report_generic_keyword(str(x.get("word", "") or ""))]
-    return curated if len(curated) >= 5 else rows
 
 
 def _infer_pos_label(word: str) -> str:
@@ -673,35 +791,6 @@ def _classify_lifecycle_stage(values: List[int]) -> List[str]:
     return stages
 
 
-def _normalize_phase_status_text(value: Any) -> str:
-    """Normalize lifecycle labels from different tools into report-facing stages."""
-    raw = str(value or "").strip()
-    if not raw or "待评估" in raw or raw in {"—", "-", "－"}:
-        return ""
-    raw = raw.replace("当前处于", "").replace("目前处于", "").strip()
-    mapping = {
-        "潜伏": "潜伏期",
-        "潜伏期": "潜伏期",
-        "扩散": "扩散期",
-        "扩散期": "扩散期",
-        "成长期": "扩散期",
-        "成长": "扩散期",
-        "爆发": "爆发期",
-        "爆发期": "爆发期",
-        "成熟期": "爆发期",
-        "高潮期": "爆发期",
-        "高峰期": "爆发期",
-        "衰退": "衰退期",
-        "衰退期": "衰退期",
-        "结束": "结束期",
-        "结束期": "结束期",
-    }
-    for key, val in mapping.items():
-        if key in raw:
-            return val
-    return ""
-
-
 def _build_lifecycle_series(dates: List[str], values: List[int]) -> Dict[str, Any]:
     """构造生命周期图数据：单曲线 + 阶段竖虚线（图内仅四阶段）。"""
     if not dates:
@@ -737,35 +826,12 @@ def _build_lifecycle_series(dates: List[str], values: List[int]) -> Dict[str, An
 def _summarize_phase_status(values: List[int]) -> str:
     """给出当前周期阶段判定文案。"""
     if not values:
-        return "待评估"
+        return "待评估（证据不足）"
     stages = _classify_lifecycle_stage([max(0, int(v)) for v in values])
     if not stages:
-        return "待评估"
+        return "待评估（证据不足）"
     latest = stages[-1]
-    return _normalize_phase_status_text(latest) or f"{latest}期"
-
-
-def _phase_status_from_report_data(report_data: Dict[str, Any], json_files: List[Dict[str, Any]]) -> str:
-    """Prefer the lifecycle chart's latest stage, then volume_stats.lifecycle.current_phase."""
-    lifecycle = report_data.get("charts", {}).get("lifecycle", {})
-    if isinstance(lifecycle, dict):
-        stages = lifecycle.get("stages") if isinstance(lifecycle.get("stages"), list) else []
-        if stages:
-            hit = _normalize_phase_status_text(stages[-1])
-            if hit:
-                return hit
-        values = [_safe_int(v, 0) for v in (lifecycle.get("values") or [])] if isinstance(lifecycle.get("values"), list) else []
-        if values:
-            hit = _summarize_phase_status(values)
-            if hit and "待评估" not in hit:
-                return hit
-    vol = _get_json_by_name(json_files, "volume_stats.json")
-    if isinstance(vol, dict):
-        lifecycle_obj = vol.get("lifecycle") if isinstance(vol.get("lifecycle"), dict) else {}
-        hit = _normalize_phase_status_text(lifecycle_obj.get("current_phase"))
-        if hit:
-            return hit
-    return "待评估（缺少声量时间序列）"
+    return f"{latest}期"
 
 
 def _compute_impact_index(
@@ -797,9 +863,12 @@ def _compute_impact_index(
 
 
 def _overall_attitude_label(stats: Dict[str, Any]) -> str:
-    pos = float(stats.get("positive_ratio", 0.0) or 0.0)
-    neg = float(stats.get("negative_ratio", 0.0) or 0.0)
-    neu = float(stats.get("neutral_ratio", 0.0) or 0.0)
+    st = _normalize_sentiment_statistics(stats)
+    pos = float(st.get("positive_ratio", 0.0) or 0.0)
+    neg = float(st.get("negative_ratio", 0.0) or 0.0)
+    neu = float(st.get("neutral_ratio", 0.0) or 0.0)
+    if pos <= 0 and neg <= 0 and neu <= 0:
+        return "中性（证据不足）"
     pairs = [("正面", pos), ("负面", neg), ("中性", neu)]
     pairs.sort(key=lambda x: x[1], reverse=True)
     label, ratio = pairs[0]
@@ -843,22 +912,14 @@ def build_report_data_from_json_files(json_files: List[Dict[str, Any]]) -> Dict[
     lifecycle = _build_lifecycle_series(trend_dates, post_counts)
     channel_obj = _find_channel_distribution_json(json_files)
     channel_pie = _build_channel_pie_data(channel_obj)
-    sentiment_detail = _find_sentiment_json(json_files) or {}
-    emotion_analysis = (
-        sentiment_detail.get("emotion_analysis")
-        if isinstance(sentiment_detail.get("emotion_analysis"), dict)
-        else {}
-    )
-    negative_drivers = str(sentiment_detail.get("negative_drivers", "") or "")
-    emotion_validation = (
-        sentiment_detail.get("emotion_validation")
-        if isinstance(sentiment_detail.get("emotion_validation"), dict)
-        else {}
-    )
+    sentiment_fine = _build_fine_sentiment_pie_series(json_files)
+    emotion_typical_expressions = _load_emotion_typical_expressions(json_files)
 
     return {
         "charts": {
             "sentiment": cfg.get("sentiment", []),
+            "sentimentFine": sentiment_fine,
+            "emotionTypicalExpressions": emotion_typical_expressions,
             "volume": {
                 "dates": trend_dates or ["—"],
                 "postCounts": post_counts or [0],
@@ -868,21 +929,13 @@ def build_report_data_from_json_files(json_files: List[Dict[str, Any]]) -> Dict[
                 "names": list(cfg.get("regions", {}).get("names", []) or ["—"]),
                 "values": list(cfg.get("regions", {}).get("counts", []) or [0]),
             },
-            "author": {"names": author_names or ["暂无作者数据"], "values": author_values or [0]},
-            "keyword": keyword_cloud or [{"name": "暂无关键词", "value": 0}],
+            "author": {"names": author_names or ["证据不足"], "values": author_values or [0]},
+            "keyword": keyword_cloud or [{"name": "证据不足", "value": 0}],
             "channel": channel_pie,
             "radarValues": _build_radar_values(cfg),
             "lifecycle": lifecycle,
         },
-        "timeline": list(cfg.get("timeline", []) or [{"time": "—", "event": "暂无时间线数据"}]),
-        "diagnostics": {
-            "keyword": cfg.get("keywordDiagnostics", {}),
-        },
-        "sentimentDetail": {
-            "emotionAnalysis": emotion_analysis,
-            "negativeDrivers": negative_drivers,
-            "emotionValidation": emotion_validation,
-        },
+        "timeline": list(cfg.get("timeline", []) or [{"time": "—", "event": "证据不足"}]),
     }
 
 
@@ -890,7 +943,7 @@ def build_meta_placeholders(json_files: List[Dict[str, Any]], event_introduction
     """从 JSON 抽取可核验的数字类占位符。"""
     sample = ""
     effective = ""
-    period = "—"
+    period = "证据不足"
 
     sent = _find_sentiment_json(json_files)
     if sent and isinstance(sent.get("statistics"), dict):
@@ -963,7 +1016,7 @@ def _merge_kb_priority_and_analysis_budget(kb_priority_text: str, analysis_resul
         kb
         + "\n\n"
         + body[:room]
-        + "\n\n...[后续监测材料已截断；完整内容仍保留在任务材料目录]..."
+        + "\n\n...[后续过程文件 JSON 已截断；完整内容仍在任务「过程文件」目录]..."
     )
 
 
@@ -1020,8 +1073,7 @@ def format_report_length_instruction(report_length: str) -> str:
         ),
         "中篇": (
             "【篇幅目标：中篇】\n"
-            "各核心维度均衡展开，可见正文约 3000～5200 字当量；"
-            "事件概览、总结复盘、处置建议不宜过度压缩，在审慎前提下保持信息密度与可执行细节；"
+            "各核心维度均衡展开，可见正文约 2500～4000 字当量；"
             "图表/数据后的结论各 2～3 条要点即可，勿为凑字数空泛扩写。"
         ),
         "长篇": (
@@ -1072,20 +1124,20 @@ def call_llm_for_template_narrative(
 
 def _default_narrative(event_introduction: str) -> Dict[str, str]:
     intro = (event_introduction or "").strip()[:500]
-    stub = "围绕事件事实、传播表现与公众关切展开结构化研判。"
+    stub = "证据不足：请补充分析 JSON 或检查模型输出。"
     title = intro[:40] if intro else "舆情分析报告"
     return {
         # 旧模板键
         "REPORT_TITLE": title,
         "OBJECT_NAME": title[:30],
         "NATURE": "待评估",
-        "RISK_LEVEL": "待评估",
+        "RISK_LEVEL": "待评估（证据不足）",
         "EVENT_BACKGROUND": intro or stub,
-        "5W_WHO": "涉事主体、公众与相关管理部门",
-        "5W_WHAT": "围绕事件事实、责任边界与处置进展形成讨论",
-        "5W_WHERE": "相关线上平台及事件发生地",
-        "5W_WHEN": "事件发酵期",
-        "5W_WHY": "信息供给不足、公众期待与处置节奏之间存在落差",
+        "5W_WHO": stub,
+        "5W_WHAT": stub,
+        "5W_WHERE": stub,
+        "5W_WHEN": stub,
+        "5W_WHY": stub,
         "SENTIMENT_ANALYSIS": stub,
         "TREND_ANALYSIS": stub,
         "THEORY_AGENDA": stub,
@@ -1096,206 +1148,34 @@ def _default_narrative(event_introduction: str) -> Dict[str, str]:
         "STRATEGY_GUIDE": stub,
         "STRATEGY_LONG": stub,
         "AUTHOR": "舆情智库",
-        "DEPARTMENT": "专题分析",
+        "DEPARTMENT": "自动生成",
         # 新模板键
-        "REPORT_SUBTITLE": "基于公开数据和事件事实的结构化研判",
+        "REPORT_SUBTITLE": "基于过程文件自动生成的结构化研判报告",
         "EVENT_TYPE": "网络舆情",
         "PHASE_STATUS": "待评估",
         "KPI_TOTAL": "—",
         "KPI_EFFECTIVE": "0",
-        "KPI_POS_RATIO": "—",
-        "KPI_NEG_RATIO": "—",
+        "KPI_POS_RATIO": "中性（证据不足）",
+        "KPI_NEG_RATIO": "待评估（证据不足）",
         "INTRO_BACKGROUND": intro or stub,
-        "INTRO_TRIGGERS": "事件触发点通常来自事实不清、回应滞后与高互动账号持续追问的叠加。",
-        "SUMMARY_BULLETS": "事件仍需以事实核验和权威回应收敛争议|情绪变化、渠道扩散和高互动样本应交叉研判|处置建议应优先回应公众最集中的疑问",
-        "CHART_SENTIMENT_ANALYSIS": "情感结构需要结合高互动样本和关键事实同步判断。",
-        "CHART_TIMELINE_ANALYSIS": "时间线用于识别触发、扩散、回应和二次发酵节点。",
-        "CHART_VOLUME_ANALYSIS": "声量变化需要同时观察峰值、长尾和潜在回弹信号。",
-        "CHART_REGION_ANALYSIS": "地域分布反映讨论活跃区域和传播承接路径。",
-        "CHART_AUTHOR_ANALYSIS": "头部发布者对议题扩散和叙事框架具有放大作用。",
-        "CHART_KEYWORD_ANALYSIS": "关键词结构用于判断讨论是否仍聚焦事件事实，或已外溢到情绪和责任追问。",
-        "CHART_RADAR_ANALYSIS": "雷达图用于综合观察声量、质量、参与广度和风险强度。",
-        "CHART_LIFECYCLE_ANALYSIS": "生命周期判断需要同时结合声量走势、疑点是否解答和关键账号是否再发声。",
+        "INTRO_TRIGGERS": stub,
+        "SUMMARY_BULLETS": "证据不足|请补充分析 JSON|已使用模板兜底输出",
+        "CHART_SENTIMENT_ANALYSIS": stub,
+        "CHART_SENTIMENT_FINE_ANALYSIS": stub,
+        "CHART_TIMELINE_ANALYSIS": stub,
+        "CHART_VOLUME_ANALYSIS": stub,
+        "CHART_REGION_ANALYSIS": stub,
+        "CHART_AUTHOR_ANALYSIS": stub,
+        "CHART_KEYWORD_ANALYSIS": stub,
+        "CHART_RADAR_ANALYSIS": stub,
+        "CHART_LIFECYCLE_ANALYSIS": stub,
         "THEORY_BUTTERFLY": stub,
-        "RESPONSE_ANALYSIS_BULLETS": "回应节奏应与公众疑问强度匹配|事实说明越模糊，二次猜测越容易扩散|处置闭环需要包含时间表、责任主体和可核验依据",
-        "RESPONSE_ACTION_PLAN": {
-            "24小时内": [
-                {
-                    "主体": "责任部门",
-                    "动作": "发布事实说明与数据口径",
-                    "话术": "我们已关注相关讨论，将以可核验事实持续更新处置进展。",
-                    "风险": "信息不足导致二次猜测",
-                    "验证指标": "负面评论占比与核心质疑关键词是否回落",
-                }
-            ],
-            "3天内": [
-                {
-                    "主体": "业务与舆情团队",
-                    "动作": "补充解释争议点并回应高频问题",
-                    "话术": "针对大家集中关心的问题，我们将逐项说明依据、流程和后续改进。",
-                    "风险": "回应过慢导致情绪固化",
-                    "验证指标": "高频质疑问题的回应覆盖率",
-                }
-            ],
-            "7天内": [
-                {
-                    "主体": "管理团队",
-                    "动作": "公布复核结果和改进安排",
-                    "话术": "我们将把复核结果和改进计划向公众说明，并接受持续监督。",
-                    "风险": "承诺无法兑现引发反弹",
-                    "验证指标": "相关负面声量是否持续下降",
-                }
-            ],
-            "复盘期": [
-                {
-                    "主体": "组织复盘小组",
-                    "动作": "沉淀案例、更新预案与话术库",
-                    "话术": "本次事件已纳入复盘，后续将优化流程并定期检查执行情况。",
-                    "风险": "同类事件重复发生",
-                    "验证指标": "同类投诉量和相似舆情复发率",
-                }
-            ],
-        },
+        "RESPONSE_ANALYSIS_BULLETS": "证据不足|未发现可核验的响应链条",
         "RECAP_DISCOURSE": stub,
         "RECAP_TRENDS": stub,
-        "RECAP_DRIVERS_BULLETS": "事实缺口推动公众持续追问|平台高互动样本会放大质疑框架|权威回应质量决定议题能否转入平稳收束",
-        "DATA_SOURCE": "平台公开数据与结构化监测",
+        "RECAP_DRIVERS_BULLETS": "证据不足|建议补充作者与传播路径数据",
+        "DATA_SOURCE": "过程文件 JSON",
     }
-
-
-def _to_action_plan_html(value: Any) -> str:
-    stages = ["24小时内", "3天内", "7天内", "复盘期"]
-    if isinstance(value, str):
-        try:
-            parsed = json.loads(value)
-        except Exception:
-            parsed = None
-        value = parsed if isinstance(parsed, (dict, list)) else value
-    if not isinstance(value, dict):
-        fallback = html.escape(str(value or "暂无可展示行动清单"), quote=True)
-        return f'<div class="action-plan-fallback">{fallback}</div>'
-
-    parts: List[str] = ['<div class="action-plan-grid">']
-    for stage in stages:
-        items = value.get(stage) or value.get(stage.replace("小时", " 小时")) or []
-        if isinstance(items, dict):
-            items = [items]
-        if not isinstance(items, list) or not items:
-            items = [
-                {
-                    "主体": "责任主体",
-                    "动作": "核验事实并同步处置依据",
-                    "话术": "我们将补充核验依据，并在确认后同步更新。",
-                    "风险": "信息不足导致误判",
-                    "验证指标": "关键事实补齐率",
-                }
-            ]
-        parts.append(f'<div class="action-plan-card"><h4>{html.escape(stage, quote=True)}</h4>')
-        for item in items[:3]:
-            if not isinstance(item, dict):
-                parts.append(f"<p>{html.escape(str(item), quote=True)}</p>")
-                continue
-            rows = []
-            fallbacks = {
-                "主体": "责任主体",
-                "动作": "核验事实并同步处置依据",
-                "话术": "我们将以可核验事实持续更新处置进展。",
-                "风险": "信息不足导致二次猜测",
-                "验证指标": "核心质疑点回应覆盖率",
-            }
-            for key in ("主体", "动作", "话术", "风险", "验证指标"):
-                text = str(item.get(key, fallbacks[key]) or fallbacks[key])
-                rows.append(f"<li><strong>{html.escape(key, quote=True)}：</strong>{html.escape(text, quote=True)}</li>")
-            parts.append("<ul>" + "".join(rows) + "</ul>")
-        parts.append("</div>")
-    parts.append("</div>")
-    return "".join(parts)
-
-
-def _coerce_response_action_plan(value: Any) -> Dict[str, Any]:
-    """
-    将模型输出的 RESPONSE_ACTION_PLAN 规范为四阶段 dict。
-    兼容：合法 dict、JSON 字符串、Python repr 单引号 dict（literal_eval）。
-    """
-    stages = ["24小时内", "3天内", "7天内", "复盘期"]
-    defaults = _default_narrative("").get("RESPONSE_ACTION_PLAN")
-    if not isinstance(defaults, dict):
-        defaults = {}
-
-    parsed: Any = value
-    if isinstance(parsed, str):
-        s = parsed.strip()
-        if s:
-            try:
-                parsed = json.loads(s)
-            except Exception:
-                if s.startswith("{") and "'" in s:
-                    try:
-                        parsed = ast.literal_eval(s)
-                    except Exception:
-                        parsed = None
-                else:
-                    parsed = None
-        else:
-            parsed = None
-
-    if not isinstance(parsed, dict):
-        parsed = {}
-
-    out: dict[str, Any] = {}
-    for st in stages:
-        items = parsed.get(st)
-        if not isinstance(items, list):
-            items = []
-        fallback = defaults.get(st) if isinstance(defaults.get(st), list) else []
-        fixed: list[dict[str, str]] = []
-        for it in items[:4]:
-            if isinstance(it, dict):
-                row = {
-                    "主体": str(it.get("主体", "") or "").strip() or "责任部门",
-                    "动作": str(it.get("动作", "") or "").strip() or "补充事实说明与处置进展",
-                    "话术": str(it.get("话术", "") or "").strip() or "我们将以可核验事实持续更新处置进展。",
-                    "风险": str(it.get("风险", "") or "").strip() or "信息不足导致二次猜测",
-                    "验证指标": str(it.get("验证指标", "") or "").strip() or "核心质疑关键词与负面声量是否回落",
-                }
-                fixed.append(row)
-            elif isinstance(it, str) and it.strip():
-                fixed.append(
-                    {
-                        "主体": "责任部门",
-                        "动作": it.strip()[:240],
-                        "话术": "我们将结合公众关切逐项说明依据、流程与后续改进。",
-                        "风险": "表述笼统导致不信任",
-                        "验证指标": "高频质疑点的回应覆盖率",
-                    }
-                )
-        out[st] = fixed if fixed else (list(fallback) if fallback else [])
-
-    return out
-
-
-def _inject_sentiment_data_anchor(text_map: Dict[str, Any], report_data: Dict[str, Any]) -> None:
-    """强制情感分析首条与 charts.sentiment、KPI 同源，避免模型写出与饼图矛盾的条数。"""
-    charts = report_data.get("charts") if isinstance(report_data.get("charts"), dict) else {}
-    rows = list(charts.get("sentiment", []) or [])
-    sm = {str(x.get("name", "")): _safe_int(x.get("value", 0), 0) for x in rows if isinstance(x, dict)}
-    pos = sm.get("正面", 0)
-    neu = sm.get("中立", sm.get("中性", 0))
-    neg = sm.get("负面", 0)
-    tot = max(1, pos + neu + neg)
-    neg_ratio = round(100.0 * neg / tot, 1)
-    anchor = (
-        f"样本情感分布为正面{pos}条、中立{neu}条、负面{neg}条，负面占比约{neg_ratio}%；"
-        f"本段与报告顶部 KPI「整体态度」及左侧饼图同源。"
-    )
-    cur = text_map.get("CHART_SENTIMENT_ANALYSIS")
-    if not isinstance(cur, list):
-        text_map["CHART_SENTIMENT_ANALYSIS"] = [anchor, "建议结合高互动样本核查讽刺、反话等是否被误判为中立。", "将情感分布与时间线、关键词交叉解读。"]
-        return
-    body = [_polish_report_prose(str(x).strip()) for x in cur if str(x).strip()]
-    body2 = [b for b in body if not re.match(r"^样本情感分布为正面\s*\d+\s*条", b)]
-    merged = [anchor] + body2
-    text_map["CHART_SENTIMENT_ANALYSIS"] = merged[:3]
 
 
 def _to_bulleted_list_html(value: Any) -> str:
@@ -1314,7 +1194,7 @@ def _to_bulleted_list_html(value: Any) -> str:
         else:
             items = [raw]
     if not items:
-        items = ["暂无可展示结论"]
+        items = ["证据不足"]
     return "".join(f"<li>{html.escape(it, quote=True)}</li>" for it in items)
 
 
@@ -1322,69 +1202,8 @@ def _contains_english_phrase(value: str) -> bool:
     s = str(value or "").strip()
     if not s:
         return False
-    # 只在“几乎纯英文短语”时触发，避免中文句子含少量英文/API/GraphRAG 被误判。
-    if re.search(r"[\u4e00-\u9fff]", s):
-        return False
-    return bool(re.search(r"^[\s\-_/A-Za-z0-9.,:;!?()]+$", s) and re.search(r"[A-Za-z]{3,}", s))
-
-
-def _polish_report_prose(value: str) -> str:
-    """Lightly remove source-path prefixes, process leakage and over-confident crisis wording."""
-    s = str(value or "")
-    if not s:
-        return s
-    s = re.sub(
-        r"引用知识库路径《[^》]+》中的[“\"]?([^”\"。；，,]+)[”\"]?理论[。；，,]?",
-        r"根据“\1”理论，",
-        s,
-    )
-    s = re.sub(
-        r"引用知识库路径《[^》]+》中的[“\"]?([^”\"。；，,]+)[”\"]?[。；，,]?",
-        r"围绕“\1”，",
-        s,
-    )
-    s = re.sub(r"引用知识库路径《[^》]+》[。；，,]?", "", s)
-    replacements = {
-        "精准踩中女性价值观与公序良俗红线": "恰好触发公众对饭圈化表达和品牌自我表达误区的反感",
-        "精准踩中": "恰好触发",
-        "完美契合": "较为符合",
-        "瞬间激活": "触发",
-        "转危为机": "转入可核验整改",
-        "将此次危机转化为品牌价值观升级的契机，联合行业协会制定内容伦理标准": "把整改重心放在内部审核、营销边界和第三方复核机制上，避免过早拔高为行业标准制定",
-        "将此次危机转化为品牌价值观升级的契机": "把此次事件作为内部审核与营销边界整改的起点",
-        "制定内容伦理标准": "完善自身内容审核标准",
-        "女性价值观与公序良俗红线": "饭圈化表达和品牌内容边界",
-        "公序良俗与女性尊严底线": "饭圈化表达和品牌内容边界",
-    }
-    for old, new in replacements.items():
-        s = s.replace(old, new)
-    source_prefix = (
-        r"(?:根据|结合|基于)?(?:用户补充(?:意见|材料|线索)?|用户反馈|用户研判|专家研判|专家人工研判|"
-        r"补充专家研判|协同输入|研判输入|用户协同输入|填写的研判表单|外部参考)"
-        r"(?:指出|认为|显示|补充|提供|提到|研判)?"
-    )
-    s = re.sub(rf"^\s*{source_prefix}[：:，,\s]*", "", s)
-    s = re.sub(rf"[（(]\s*{source_prefix}\s*[）)]", "", s)
-    s = re.sub(rf"{source_prefix}[：:]\s*", "", s)
-    process_replacements = {
-        "本次过程文件": "本次监测数据",
-        "过程文件 JSON": "平台公开数据与结构化监测",
-        "过程文件json": "平台公开数据与结构化监测",
-        "过程文件显示": "监测数据显示",
-        "过程文件": "监测数据",
-        "用户补充意见": "公开补充线索",
-        "用户补充": "公开补充线索",
-        "补充专家研判": "专业研判",
-        "专家人工研判": "专业研判",
-        "协同输入": "综合信息",
-        "填写的研判表单": "研判材料",
-        "大模型生成": "系统研判",
-        "机器生成": "系统研判",
-    }
-    for old, new in process_replacements.items():
-        s = s.replace(old, new)
-    s = re.sub(r"\s+", " ", s).strip() if re.search(r"[A-Za-z]{2,}", s) else s.strip()
-    return s
+    # 命中连续英文词组，视为非中文报告内容
+    return bool(re.search(r"[A-Za-z]{3,}(?:[\s\-_/]+[A-Za-z]{2,})*", s))
 
 
 def _sanitize_narrative_language(text_map: Dict[str, Any], defaults: Dict[str, str]) -> Dict[str, Any]:
@@ -1393,30 +1212,17 @@ def _sanitize_narrative_language(text_map: Dict[str, Any], defaults: Dict[str, s
     for key, value in list(sanitized.items()):
         if key not in _PLACEHOLDER_KEYS:
             continue
-        if key in {"AUTHOR", "DEPARTMENT"}:
+        if key in {"DATA_SOURCE", "AUTHOR", "DEPARTMENT"}:
             continue
         if key in _LIST_PLACEHOLDER_KEYS:
             if isinstance(value, list):
-                raw_items = [_polish_report_prose(str(x).strip()) for x in value if str(x).strip()]
-                cleaned_items = [x for x in raw_items if not _contains_english_phrase(x)]
-                if cleaned_items:
-                    sanitized[key] = cleaned_items
-                elif raw_items:
-                    sanitized[key] = raw_items
-                else:
-                    sanitized[key] = defaults.get(key, "待补充")
+                cleaned_items = [str(x).strip() for x in value if str(x).strip() and not _contains_english_phrase(str(x))]
+                sanitized[key] = cleaned_items or defaults.get(key, "证据不足")
             elif _contains_english_phrase(str(value)):
-                sanitized[key] = defaults.get(key, "待补充")
-            else:
-                sanitized[key] = _polish_report_prose(str(value))
+                sanitized[key] = defaults.get(key, "证据不足")
         else:
-            if key == "RESPONSE_ACTION_PLAN":
-                sanitized[key] = _coerce_response_action_plan(value)
-                continue
             if _contains_english_phrase(str(value)):
-                sanitized[key] = defaults.get(key, "待补充")
-            else:
-                sanitized[key] = _polish_report_prose(str(value))
+                sanitized[key] = defaults.get(key, "证据不足")
     return sanitized
 
 
@@ -1424,25 +1230,19 @@ def _has_placeholder_text(value: Any) -> bool:
     s = str(value or "").strip()
     if not s:
         return True
-    marks = (
-        "证据不足",
-        "待补充",
-        "placeholder",
-        "todo",
-        "请补充分析",
-        "请结合图表",
-        "请结合传播链路",
-        "请补充",
-        "已生成结构化报告",
-        "更细结论",
-        "专题约束",
-        "过程文件 json",
-        "过程文件json",
-        "—",
-        "-",
-        "－",
-    )
+    marks = ("证据不足", "待补充", "placeholder", "todo", "请补充分析", "—", "-", "－")
     return any(m in s.lower() for m in [x.lower() for x in marks])
+
+
+def _is_weak_list(val: Any) -> bool:
+    """图表结论类数组是否过弱（空、非列表、或过半为占位）。"""
+    if not isinstance(val, list):
+        return True
+    items = [str(x).strip() for x in val if str(x).strip()]
+    if not items:
+        return True
+    weak_hits = sum(1 for x in items if "证据不足" in x or "未提供" in x)
+    return weak_hits >= max(1, len(items) // 2)
 
 
 def _fill_missing_narrative_sections(text_map: Dict[str, Any], report_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -1453,94 +1253,14 @@ def _fill_missing_narrative_sections(text_map: Dict[str, Any], report_data: Dict
     stages = lifecycle.get("stages") if isinstance(lifecycle.get("stages"), list) else []
     values = lifecycle.get("values") if isinstance(lifecycle.get("values"), list) else []
     boundaries = lifecycle.get("boundaries") if isinstance(lifecycle.get("boundaries"), list) else []
-    timeline = report_data.get("timeline") if isinstance(report_data.get("timeline"), list) else []
-
-    def _top_names(block_name: str, *, limit: int = 3) -> List[str]:
-        block = charts.get(block_name) if isinstance(charts.get(block_name), dict) else {}
-        names = list(block.get("names", []) or [])
-        vals = list(block.get("values", []) or [])
-        pairs = [(str(n).strip(), _safe_int(v, 0)) for n, v in zip(names, vals) if str(n).strip()]
-        pairs = [p for p in pairs if p[0] != "—" and not p[0].startswith("暂无")]
-        pairs.sort(key=lambda x: x[1], reverse=True)
-        return [n for n, _ in pairs[:limit]]
-
-    def _sentiment_counts() -> tuple[int, int, int]:
-        rows = list(charts.get("sentiment", []) or [])
-        sent = {str(x.get("name", "")): _safe_int(x.get("value", 0), 0) for x in rows if isinstance(x, dict)}
-        return sent.get("正面", 0), sent.get("中立", sent.get("中性", 0)), sent.get("负面", 0)
-
-    if _has_placeholder_text(out.get("SUMMARY_BULLETS")):
-        pos, neu, neg = _sentiment_counts()
-        timeline_count = len([x for x in timeline if isinstance(x, dict) and str(x.get("event", "")).strip()])
-        peak = max([_safe_int(v, 0) for v in values], default=0)
-        out["SUMMARY_BULLETS"] = [
-            f"已汇总情感分布：正面{pos}条、中立{neu}条、负面{neg}条。",
-            f"已提取时间线节点{timeline_count}个，最高声量约为{peak}。",
-            "后续判断应以最新权威回应、高互动样本和平台扩散变化交叉验证。",
-        ]
-
-    if _has_placeholder_text(out.get("CHART_SENTIMENT_ANALYSIS")):
-        pos, neu, neg = _sentiment_counts()
-        total = max(1, pos + neu + neg)
-        dominant = max([("正面", pos), ("中立", neu), ("负面", neg)], key=lambda x: x[1])
-        out["CHART_SENTIMENT_ANALYSIS"] = [
-            f"情感分布中{dominant[0]}占比最高（{round(dominant[1] * 100.0 / total, 1)}%），可作为判断舆论基调的基础信号。",
-            f"负面样本为{neg}条，建议结合高互动内容核查是否存在风险叙事集中扩散。",
-            "情感图应与声量高峰、关键词变化交叉解读，避免只凭单一比例作确定性判断。",
-        ]
-
-    if _has_placeholder_text(out.get("CHART_TIMELINE_ANALYSIS")):
-        timeline_count = len([x for x in timeline if isinstance(x, dict) and str(x.get("event", "")).strip()])
-        out["CHART_TIMELINE_ANALYSIS"] = [
-            f"时间线共整理{timeline_count}个节点，用于观察事件从触发到扩散的顺序关系。",
-            "节点密集区通常对应媒体再传播、当事方回应或平台二次分发等关键阶段。",
-            "建议将时间线与声量曲线叠加复核，识别真正推动热度变化的触发点。",
-        ]
-
-    if _has_placeholder_text(out.get("CHART_VOLUME_ANALYSIS")):
-        volume = charts.get("volume") if isinstance(charts.get("volume"), dict) else {}
-        post_counts = [_safe_int(v, 0) for v in list(volume.get("postCounts", []) or [])]
-        peak = max(post_counts, default=0)
-        out["CHART_VOLUME_ANALYSIS"] = [
-            f"声量序列峰值约为{peak}，反映公众关注在特定窗口出现集中抬升。",
-            "若峰值后快速回落，说明议题可能进入消退阶段；若长尾持续，应关注次生话题。",
-            "建议重点复盘峰值前后的关键词和高互动样本，定位传播加速因素。",
-        ]
-
-    if _has_placeholder_text(out.get("CHART_AUTHOR_ANALYSIS")):
-        top_authors = _top_names("author", limit=3)
-        out["CHART_AUTHOR_ANALYSIS"] = [
-            f"高频发布者主要包括：{'、'.join(top_authors) if top_authors else '暂无显著高频作者'}。",
-            "头部账号会影响议题扩散速度，但仍需结合互动量和内容立场判断真实影响力。",
-            "建议持续跟踪关键账号后续发文，识别是否存在二次放大或话题转向。",
-        ]
-
-    if _has_placeholder_text(out.get("CHART_RADAR_ANALYSIS")):
-        radar_values = list(charts.get("radarValues", []) or [])
-        radar_text = "、".join(str(_safe_int(v, 0)) for v in radar_values[:5]) if radar_values else "暂无雷达评分"
-        out["CHART_RADAR_ANALYSIS"] = [
-            f"五维雷达评分约为：{radar_text}。",
-            "雷达图用于快速观察声量、质量、参与广度、场景复杂度和影响强度是否均衡。",
-            "分值较低的维度应通过补采样、补证据或专项分析进一步核验。",
-        ]
 
     # Lifecycle chart analysis fallback
     if _has_placeholder_text(out.get("CHART_LIFECYCLE_ANALYSIS")):
         peak = max([_safe_int(v, 0) for v in values], default=0)
         latest = str(stages[-1] if stages else "衰退")
         trans = "、".join(str(b.get("name", "")).strip() for b in boundaries[:3] if isinstance(b, dict) and str(b.get("name", "")).strip())
-        recent = [_safe_int(v, 0) for v in values[-3:]]
-        if "衰退" in latest or "结束" in latest:
-            lead = (
-                f"当前图表阶段显示为{latest}期，近期声量峰值约为{peak}；"
-                "但声量回落不等于风险结束，若核心疑点未被权威回应，仍可能因新证据或关键账号再发声出现二次抬升。"
-            )
-        elif recent and recent[-1] >= max(recent[:1] or [0]):
-            lead = f"当前阶段判定为{latest}期，近期声量仍有抬升迹象，需按扩散或再爆发窗口进行监测。"
-        else:
-            lead = f"当前阶段判定为{latest}期，近期声量峰值约为{peak}，仍需结合疑点回应情况判断是否真正收束。"
         out["CHART_LIFECYCLE_ANALYSIS"] = [
-            lead,
+            f"当前阶段判定为{latest}期，近期声量峰值约为{peak}，整体节奏已从高位回落。",
             f"阶段迁移链路为：{trans or '潜伏→扩散→爆发→衰退'}，与常见公共议题生命周期基本一致。",
             "后续可重点观察是否出现二次抬升信号（新素材传播、关键账号再发声、媒体再聚焦）。",
         ]
@@ -1561,6 +1281,24 @@ def _fill_missing_narrative_sections(text_map: Dict[str, Any], report_data: Dict
                 f"渠道声量主要集中在「{top_desc}」（Top{len(top)} 合计约{share}%），呈现一定渠道集中度。",
                 "建议结合不同渠道的内容形态差异（短视频/问答/资讯）调整回应载体与节奏，避免单点渠道失守引发跨平台扩散。",
                 "如需精细化处置，可进一步下钻到各渠道的高互动样本与核心发布者，识别传播链关键节点。",
+            ]
+
+    if _is_weak_list(out.get("CHART_SENTIMENT_FINE_ANALYSIS")):
+        fine = [x for x in (charts.get("sentimentFine", []) or []) if isinstance(x, dict) and str(x.get("name", "")).strip()]
+        fine.sort(key=lambda x: _safe_int(x.get("value", 0), 0), reverse=True)
+        if fine:
+            total_f = sum(_safe_int(x.get("value", 0), 0) for x in fine) or 1
+            top3 = fine[:3]
+            segs: List[str] = []
+            for x in top3:
+                nm = str(x.get("name", "")).strip()
+                vv = _safe_int(x.get("value", 0), 0)
+                pct = round(100.0 * vv / total_f, 1)
+                segs.append(f"「{nm}」约{pct}%")
+            out["CHART_SENTIMENT_FINE_ANALYSIS"] = [
+                f"细粒度情绪占比靠前项为：{'、'.join(segs)}，体现文本语气与修辞维度上的集中结构（与正/负/中三维口径不同）。",
+                "「其他」多为无正文或情绪字段缺失样本；解读时应与样本总量及三维情感占比交叉核对，避免将「其他」误读为单一情绪。",
+                "后续可对头部情绪标签各抽取若干高互动原文做质性阅读，区分事实质疑、情绪宣泄与反讽玩梗等不同机制。",
             ]
 
     # Theory slots fallback：避免长期出现“证据不足”与固定三件套复读
@@ -1634,20 +1372,14 @@ def _fill_missing_narrative_sections(text_map: Dict[str, Any], report_data: Dict
         out["RECAP_DISCOURSE"] = "该议题的核心不是单点事实，而是公众对“规则执行是否一致、是否可感知”的持续关注。"
     if _has_placeholder_text(out.get("RECAP_TRENDS")):
         latest = str(stages[-1] if stages else "衰退")
-        if "衰退" in latest or "结束" in latest:
-            out["RECAP_TRENDS"] = (
-                f"当前图表阶段显示为{latest}期，但若关键事实仍未公开、责任边界仍未说明，舆论并不会自然结束。"
-                "建议把策略重心放在权威说明、证据公开和后续整改闭环上，防止长尾讨论重新聚合为新一轮爆发。"
-            )
-        else:
-            out["RECAP_TRENDS"] = f"当前整体处于{latest}期，应优先补齐事实说明、回应高频质疑并监测跨平台扩散信号。"
+        out["RECAP_TRENDS"] = f"当前整体处于{latest}期，建议将策略重心从灭火转为复盘和预防，降低同类事件复发概率。"
 
     return out
 
 
 def merge_morandi_template(
     template_html: str,
-    text_map: Dict[str, Any],
+    text_map: Dict[str, str],
     report_config: Dict[str, Any],
     report_data: Dict[str, Any],
 ) -> str:
@@ -1659,9 +1391,7 @@ def merge_morandi_template(
     for k in _PLACEHOLDER_KEYS:
         token = "{{" + k + "}}"
         val = text_map.get(k, "—")
-        if k == "RESPONSE_ACTION_PLAN":
-            out = out.replace(token, _to_action_plan_html(val))
-        elif k in _LIST_PLACEHOLDER_KEYS:
+        if k in _LIST_PLACEHOLDER_KEYS:
             out = out.replace(token, _to_bulleted_list_html(val))
         else:
             out = out.replace(token, html.escape(str(val), quote=True))
@@ -1707,9 +1437,7 @@ def build_html_from_morandi_template(
         for k, v in narrative.items():
             ks = str(k)
             if ks in _PLACEHOLDER_KEYS and v is not None:
-                if ks == "RESPONSE_ACTION_PLAN" and isinstance(v, dict):
-                    text_map[ks] = v
-                elif ks in _LIST_PLACEHOLDER_KEYS and isinstance(v, list):
+                if ks in _LIST_PLACEHOLDER_KEYS and isinstance(v, list):
                     text_map[ks] = [str(x).strip() for x in v if str(x).strip()]
                 else:
                     text_map[ks] = str(v).strip()
@@ -1722,21 +1450,20 @@ def build_html_from_morandi_template(
     effective_int = _safe_int_from_text(effective, 0)
     text_map["KPI_TOTAL"] = sample
     text_map["KPI_EFFECTIVE"] = "—"
-    text_map.setdefault("DATA_SOURCE", "平台公开数据与结构化监测")
-    volume_chart = report_data.get("charts", {}).get("volume", {})
-    lifecycle_values = list(volume_chart.get("postCounts", []) or volume_chart.get("values", []) or [])
-    text_map["PHASE_STATUS"] = _phase_status_from_report_data(report_data, json_files)
+    text_map.setdefault("DATA_SOURCE", "过程文件 JSON")
+    lifecycle_values = list(report_data.get("charts", {}).get("volume", {}).get("values", []) or [])
+    text_map["PHASE_STATUS"] = _summarize_phase_status([_safe_int(v, 0) for v in lifecycle_values])
     text_map["KPI_NEG_RATIO"] = text_map["PHASE_STATUS"]
 
     sent = _find_sentiment_json(json_files)
     if sent and isinstance(sent.get("statistics"), dict):
-        st_eff = _statistics_effective_ratios(sent["statistics"])
-        text_map["KPI_POS_RATIO"] = _overall_attitude_label(st_eff)
-        pos = float(st_eff.get("positive_ratio", 0.0) or 0.0)
-        neg = float(st_eff.get("negative_ratio", 0.0) or 0.0)
+        st = sent["statistics"]
+        text_map["KPI_POS_RATIO"] = _overall_attitude_label(st)
+        pos = float(st.get("positive_ratio", 0.0) or 0.0)
+        neg = float(st.get("negative_ratio", 0.0) or 0.0)
         sentiment_balance = abs(pos - neg) * 100.0
     else:
-        text_map.setdefault("KPI_POS_RATIO", "—")
+        text_map.setdefault("KPI_POS_RATIO", "中性（证据不足）")
         sentiment_balance = 30.0
 
     region_count = len(list(report_data.get("charts", {}).get("region", {}).get("names", []) or []))
@@ -1755,22 +1482,11 @@ def build_html_from_morandi_template(
 
     text_map = _sanitize_narrative_language(text_map, defaults)
     text_map = _fill_missing_narrative_sections(text_map, report_data)
-    text_map["RESPONSE_ACTION_PLAN"] = _coerce_response_action_plan(text_map.get("RESPONSE_ACTION_PLAN"))
-    _inject_sentiment_data_anchor(text_map, report_data)
     intro_val = str(text_map.get("INTRO_BACKGROUND", "") or "").strip()
     if len(intro_val) > 600:
         text_map["INTRO_BACKGROUND"] = intro_val[:600] + "..."
 
     # --------- 程序兜底：地域/关键词结论至少给出描述性分析 ---------
-    def _is_weak_list(val: Any) -> bool:
-        if not isinstance(val, list):
-            return True
-        items = [str(x).strip() for x in val if str(x).strip()]
-        if not items:
-            return True
-        weak_hits = sum(1 for x in items if "证据不足" in x or "未提供" in x)
-        return weak_hits >= max(1, len(items) // 2)
-
     region_text_raw = str(text_map.get("CHART_REGION_ANALYSIS", "") or "")
     # 若模型输出了误导句，且 region_stats 实际有结果，则强制清空并走程序兜底生成
     if "数据未提取明确地域分布统计，仅显示IP属地字段存在" in region_text_raw:
@@ -1806,21 +1522,9 @@ def build_html_from_morandi_template(
         kws.sort(key=lambda x: _safe_int(x.get("value", 0), 0), reverse=True)
         if kws:
             topw = [str(x["name"]) for x in kws[:8]]
-            keyword_diag = {}
-            if isinstance(report_data.get("diagnostics"), dict):
-                keyword_diag = report_data.get("diagnostics", {}).get("keyword", {})
-            generic_terms = []
-            if isinstance(keyword_diag, dict):
-                generic_terms = [str(x) for x in (keyword_diag.get("generic_terms") or []) if str(x).strip()]
-            pollution_note = ""
-            if generic_terms and bool(keyword_diag.get("pollution_suspected", False)):
-                pollution_note = (
-                    f"原始热词中曾出现「{'、'.join(generic_terms[:5])}」等泛词，提示采集口径存在同名词或生活类内容混入风险；"
-                    "关键词解读应优先回到事件专属主体、地点、诉求和处置进展。"
-                )
             text_map["CHART_KEYWORD_ANALYSIS"] = [
                 f"高频关键词集中在「{'、'.join(topw[:5])}」等，讨论焦点更偏向冲突场景与规则认知，而非单一事实复述。",
-                pollution_note or "关键词结构中情绪词和评价词占比较高时，通常意味着讨论正在从事实层向立场层迁移。",
+                "关键词结构中情绪词和评价词占比较高时，通常意味着讨论正在从事实层向立场层迁移。",
                 "可持续跟踪 Top200 热词的主题簇变化，观察议题是否出现外溢和泛化。",
             ]
 

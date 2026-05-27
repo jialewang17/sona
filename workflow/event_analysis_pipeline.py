@@ -394,6 +394,13 @@ def _ensure_analysis_result_file(
         fallback_payload["statistics"] = result_json.get("statistics", {}) or {}
         fallback_payload["positive_summary"] = result_json.get("positive_summary", []) or []
         fallback_payload["negative_summary"] = result_json.get("negative_summary", []) or []
+        et = result_json.get("emotion_typical_expressions")
+        if not isinstance(et, dict):
+            st = fallback_payload["statistics"]
+            if isinstance(st, dict):
+                et = st.get("emotion_typical_expressions")
+        if isinstance(et, dict):
+            fallback_payload["emotion_typical_expressions"] = et
     else:
         fallback_payload["result"] = result_json
     if "error" in result_json:
@@ -751,7 +758,7 @@ def _build_default_time_range(days: int = 30) -> str:
     生成默认时间范围：昨天 23:59:59 往前 days 天。
     """
     end = datetime.now().replace(hour=23, minute=59, second=59, microsecond=0) - timedelta(days=1)
-    start = (end - timedelta(days=days)).replace(hour=0, minute=0, second=0, microsecond=0)
+    start = end - timedelta(days=days)
     return f"{start.strftime('%Y-%m-%d %H:%M:%S')};{end.strftime('%Y-%m-%d %H:%M:%S')}"
 
 
@@ -818,57 +825,6 @@ def _infer_default_time_range_days(user_query: str) -> int:
 
     # 默认 7 天（更贴近大多数公共事件的有效周期）
     return 7
-
-
-def _time_range_span_days(time_range: str) -> float:
-    normalized = _normalize_time_range_input(time_range)
-    if not normalized or ";" not in normalized:
-        return 0.0
-    start, end = [x.strip() for x in normalized.split(";", maxsplit=1)]
-    try:
-        start_dt = datetime.strptime(start, "%Y-%m-%d %H:%M:%S")
-        end_dt = datetime.strptime(end, "%Y-%m-%d %H:%M:%S")
-        return max(0.0, (end_dt - start_dt).total_seconds() / 86400.0)
-    except Exception:
-        return 0.0
-
-
-def _query_has_explicit_time_range(user_query: str) -> bool:
-    q = str(user_query or "")
-    if re.search(r"\d{4}[-/年]\d{1,2}[-/月]\d{1,2}", q):
-        return True
-    if re.search(r"\d{1,2}月\d{1,2}[日号]?\s*(到|至|-|—|~)\s*\d{1,2}月?\d{1,2}[日号]?", q):
-        return True
-    if re.search(r"\d{1,2}月\d{1,2}[日号]?\s*(到|至|-|—|~)\s*\d{1,2}[日号]", q):
-        return True
-    return any(k in q for k in ("最近", "近一", "近两", "近三", "近7", "近30", "一周", "两周", "一个月", "30天", "7天", "3天", "48小时", "24小时"))
-
-
-def _maybe_clamp_event_time_range(time_range: str, user_query: str) -> tuple[str, Optional[Dict[str, Any]]]:
-    """
-    Prevent event-style reports from silently falling back to a month-long window.
-
-    If the user explicitly requested a long range, keep it. Otherwise, overly broad model output is
-    clamped to the event default inferred from the query.
-    """
-    normalized = _normalize_time_range_input(time_range)
-    if not normalized:
-        return time_range, None
-    span_days = _time_range_span_days(normalized)
-    inferred_days = _infer_default_time_range_days(user_query)
-    max_event_days = max(14, inferred_days + 7)
-    if span_days <= max_event_days:
-        return normalized, None
-    if _query_has_explicit_time_range(user_query):
-        return normalized, None
-    clamped = _build_default_time_range(inferred_days)
-    return clamped, {
-        "original_time_range": normalized,
-        "clamped_time_range": clamped,
-        "span_days": round(span_days, 2),
-        "inferred_days": inferred_days,
-        "max_event_days": max_event_days,
-    }
 
 
 def _supported_platforms_for_netinsight() -> List[str]:
@@ -2122,55 +2078,6 @@ def _topic_relevance_metrics(
         "公共场所",
         "场所",
     }
-    generic_keywords = {
-        "中国",
-        "国家",
-        "发展",
-        "工作",
-        "生活",
-        "社会",
-        "全球",
-        "世界",
-        "时间",
-        "市场",
-        "企业",
-        "公司",
-        "服务",
-        "项目",
-        "技术",
-        "人员",
-        "数据",
-        "国际",
-        "提供",
-        "家庭",
-        "相关",
-        "经济",
-        "能力",
-        "信息",
-        "平台",
-        "专业",
-        "建设",
-        "岗位",
-        "管理",
-        "行业",
-        "方式",
-        "快乐",
-        "电话",
-        "妈妈",
-        "政策",
-        "科技",
-        "教育",
-        "持续",
-        "领域",
-        "支持",
-        "产业",
-        "幸福",
-        "地区",
-        "历史",
-        "增长",
-        "万事兴",
-        "家和万事兴",
-    }
 
     def _anchorize(text: str) -> set[str]:
         cleaned = re.sub(r"[^\w\u4e00-\u9fff]+", " ", str(text or "").lower())
@@ -2266,9 +2173,6 @@ def _topic_relevance_metrics(
     phrase_denom = max(1, min(len(query_phrases), 8))
     coverage_phrase = float(len(set(phrase_hits))) / float(phrase_denom)
     composite = round(0.55 * coverage + 0.45 * coverage_phrase, 4)
-    top20 = [str(k or "").strip() for k in top_keywords[:20] if str(k or "").strip()]
-    generic_top_terms = [k for k in top20 if re.sub(r"\s+", "", k) in generic_keywords]
-    generic_top_ratio = round(len(generic_top_terms) / float(max(1, len(top20))), 4)
 
     return {
         "anchor_count": len(anchor_tokens),
@@ -2278,9 +2182,6 @@ def _topic_relevance_metrics(
         "coverage": round(coverage, 4),
         "coverage_phrase": round(coverage_phrase, 4),
         "phrase_hits": list(dict.fromkeys(phrase_hits))[:12],
-        "generic_top_ratio": generic_top_ratio,
-        "generic_top_terms": generic_top_terms[:12],
-        "generic_pollution_suspected": generic_top_ratio >= 0.35,
         "composite": composite,
     }
 
@@ -2471,19 +2372,14 @@ def _is_graph_rag_enabled() -> bool:
     Graph RAG 开关：
     - 显式 false/off -> 关闭
     - 显式 true/on -> 开启
-    - auto/未设置 -> 跟随 config/config.yaml 的 graph_rag.enabled；未配置时默认开启
+    - 未设置时默认开启（避免“Step10 存在但常被静默跳过”）
     """
     v = os.environ.get("SONA_ENABLE_GRAPH_RAG", "auto").strip().lower()
     if v in ("0", "false", "no", "n", "off"):
         return False
     if v in ("1", "true", "yes", "y", "on"):
         return True
-    try:
-        from tools.graph_rag_query import graph_rag_enabled_in_config
-
-        return graph_rag_enabled_in_config()
-    except Exception:
-        return True
+    return True
 
 
 def run_event_analysis_pipeline(
@@ -2894,17 +2790,6 @@ def run_event_analysis_pipeline(
     if not _validate_time_range(str(search_plan.get("timeRange", ""))):
         fallback_days = _infer_default_time_range_days(user_query)
         search_plan["timeRange"] = _build_default_time_range(fallback_days)
-    clamped_time_range, clamp_meta = _maybe_clamp_event_time_range(str(search_plan.get("timeRange", "")), user_query)
-    if clamp_meta:
-        search_plan["timeRange"] = clamped_time_range
-        suggested_collect_plan["time_range"] = clamped_time_range
-        _append_ndjson_log(
-            run_id="event_analysis_pre_confirm",
-            hypothesis_id="H52_event_time_range_clamped",
-            location="workflow/event_analysis_pipeline.py:event_time_range_guard",
-            message="事件型舆情检索时间窗过宽，已收敛到默认短窗口",
-            data=clamp_meta,
-        )
     suggested_collect_plan["platforms"] = _to_clean_str_list(
         suggested_collect_plan.get("platforms") or _platforms_from_search_plan(search_plan),
         max_items=12,
@@ -3633,9 +3518,6 @@ def run_event_analysis_pipeline(
                 "min_coverage": min_topic_coverage,
                 "overlap_terms": relevance.get("overlap_terms", []),
                 "phrase_hits": relevance.get("phrase_hits", []),
-                "generic_top_ratio": relevance.get("generic_top_ratio", 0.0),
-                "generic_top_terms": relevance.get("generic_top_terms", []),
-                "generic_pollution_suspected": relevance.get("generic_pollution_suspected", False),
             },
         )
         guard_score = float(relevance.get("composite", relevance.get("coverage", 0.0)) or 0.0)
@@ -3811,7 +3693,7 @@ def run_event_analysis_pipeline(
 
     # 先 timeline
     timeline_timeout_sec = max(30, min(_safe_int(os.environ.get("SONA_TIMELINE_TIMEOUT_SEC", "240"), 240), 3600))
-    sentiment_timeout_sec = max(30, min(_safe_int(os.environ.get("SONA_SENTIMENT_TIMEOUT_SEC", "300"), 300), 3600))
+    sentiment_timeout_sec = max(30, min(_safe_int(os.environ.get("SONA_SENTIMENT_TIMEOUT_SEC", "600"), 600), 3600))
 
     if not timeline_enabled:
         timeline_json = _build_skipped_analysis_payload("timeline", "SONA_ANALYSIS_ENABLE_TIMELINE=false")
@@ -3845,7 +3727,7 @@ def run_event_analysis_pipeline(
         if debug:
             console.print("[green]♻️ timeline 已复用历史结果[/green]")
 
-    # 再 sentiment（失败则用 CSV 情感列兜底）
+    # 再 sentiment（默认仅 LLM；仅当 SONA_SENTIMENT_ALLOW_COLUMN_FALLBACK=1 时失败才用 CSV 列兜底）
     if not sentiment_enabled:
         sentiment_json = _build_skipped_analysis_payload("sentiment", "SONA_ANALYSIS_ENABLE_SENTIMENT=false")
     elif not reused_flags["sentiment"]:
@@ -4081,7 +3963,6 @@ def run_event_analysis_pipeline(
         "y",
         "on",
     )
-    weibo_ref_error = ""
     if enable_weibo_ref:
         try:
             weibo_topic = str(search_plan.get("eventIntroduction") or user_query).strip() or user_query
@@ -4105,7 +3986,6 @@ def run_event_analysis_pipeline(
                         console.print("[dim]微博智搜预览（辅助你输入观点研判）：[/dim]")
                         console.print(f"[dim]{chr(10).join(preview_lines)}[/dim]")
         except Exception as e:
-            weibo_ref_error = str(e)
             _append_ndjson_log(
                 run_id="event_analysis_reference",
                 hypothesis_id="H50_weibo_aisearch_prefetch_optional",
@@ -4113,17 +3993,6 @@ def run_event_analysis_pipeline(
                 message="Step9 微博智搜预览失败，已跳过",
                 data={"error": str(e)},
             )
-    runtime_harness.record(
-        "weibo_aisearch_health",
-        {
-            "enabled": bool(enable_weibo_ref),
-            "count": int((weibo_ref_json or {}).get("count") or 0) if isinstance(weibo_ref_json, dict) else 0,
-            "fallback_used": bool((weibo_ref_json or {}).get("fallback_used", False)) if isinstance(weibo_ref_json, dict) else False,
-            "error": weibo_ref_error
-            or (str((weibo_ref_json or {}).get("error") or "") if isinstance(weibo_ref_json, dict) else ""),
-            "source": str((weibo_ref_json or {}).get("source") or "") if isinstance(weibo_ref_json, dict) else "",
-        },
-    )
 
     user_judgement_text = str(os.environ.get("SONA_EVENT_USER_JUDGEMENT", "") or "").strip()
     if collab_enabled and not user_judgement_text:
@@ -4683,38 +4552,6 @@ def run_event_analysis_pipeline(
 
     if not html_file_path and file_url:
         html_file_path = file_url
-
-    # ============ 11.1) 案例库：从 sandbox 产物写入 Wiki cases（任务 15） ============
-    try:
-        from workflow.case_library_generator import write_event_analysis_case_wiki
-
-        case_meta = write_event_analysis_case_wiki(
-            project_root=_ROOT,
-            task_id=task_id,
-            process_dir=process_dir,
-            search_plan=search_plan,
-            user_query=user_query,
-            html_report_path=html_file_path,
-            timeline_json=timeline_json if isinstance(timeline_json, dict) else None,
-            sentiment_json=sentiment_json if isinstance(sentiment_json, dict) else None,
-        )
-        _append_ndjson_log(
-            run_id="event_analysis_case_kb",
-            hypothesis_id="H45_case_library_autogen",
-            location="workflow/event_analysis_pipeline.py:case_library",
-            message="已写入 Wiki 标准案例（cases/）并登记索引",
-            data=case_meta,
-        )
-    except Exception as e:
-        _append_ndjson_log(
-            run_id="event_analysis_case_kb",
-            hypothesis_id="H45_case_library_autogen",
-            location="workflow/event_analysis_pipeline.py:case_library_exception",
-            message="案例库自动生成失败（不影响报告主流程）",
-            data={"error": str(e)},
-        )
-        if debug:
-            console.print(f"[yellow]⚠️ 案例库写入跳过: {e}[/yellow]")
 
     if sys.stdout.isatty():
         try:

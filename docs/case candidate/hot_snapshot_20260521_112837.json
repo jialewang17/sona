@@ -1,0 +1,2948 @@
+{
+  "generated_at": "2026-05-21T11:28:37.397094+08:00",
+  "report_html_path": "D:\\sona-master\\output_langgraph\\bjtupubclaw_report_20260521_112836.html",
+  "domain_cluster_stats": {
+    "domain_order": [
+      "司法与监督",
+      "体育竞技",
+      "国际关系与军事",
+      "政治与公共安全",
+      "财政金融",
+      "产业与公司",
+      "消费市场",
+      "科技互联网",
+      "文体娱乐",
+      "教育科研",
+      "医疗健康",
+      "生态环境",
+      "社会民生",
+      "其他"
+    ],
+    "clusters_by_domain": {
+      "司法与监督": [],
+      "体育竞技": [
+        {
+          "cluster_id": "c6",
+          "representative_title": "孙颖莎叫自己中国科比",
+          "domain": "体育竞技",
+          "size": 4,
+          "sample_titles": [
+            "孙颖莎叫自己中国科比",
+            "孙颖莎备战世乒赛读科比自传",
+            "亚运会中国代表团整体缩编",
+            "全球疯抢尿素中国为何不慌"
+          ],
+          "source_ids": [
+            "weibo",
+            "tieba",
+            "bilibili-hot-search"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c5",
+          "representative_title": "马刺vs雷霆",
+          "domain": "体育竞技",
+          "size": 2,
+          "sample_titles": [
+            "马刺vs雷霆",
+            "*ST闻泰"
+          ],
+          "source_ids": [
+            "weibo",
+            "xueqiu"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c8",
+          "representative_title": "哈珀受伤",
+          "domain": "体育竞技",
+          "size": 1,
+          "sample_titles": [
+            "哈珀受伤"
+          ],
+          "source_ids": [
+            "weibo"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c18",
+          "representative_title": "雷霆力克马刺大比分扳平",
+          "domain": "体育竞技",
+          "size": 1,
+          "sample_titles": [
+            "雷霆力克马刺大比分扳平"
+          ],
+          "source_ids": [
+            "douyin"
+          ],
+          "max_hot": 0.0
+        }
+      ],
+      "国际关系与军事": [
+        {
+          "cluster_id": "c17",
+          "representative_title": "普京结束访华",
+          "domain": "国际关系与军事",
+          "size": 7,
+          "sample_titles": [
+            "普京结束访华",
+            "普京访华带了哪些企业家",
+            "俄罗斯总统普京结束访华",
+            "京东方A",
+            "北方华创"
+          ],
+          "source_ids": [
+            "douyin",
+            "toutiao",
+            "bilibili-hot-search",
+            "xueqiu"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c14",
+          "representative_title": "特朗普回应中俄元首会晤",
+          "domain": "国际关系与军事",
+          "size": 5,
+          "sample_titles": [
+            "特朗普回应中俄元首会晤",
+            "特朗普回应中俄元首会晤",
+            "特朗普，“退了一万亿”",
+            "特朗普：不要中国学生，那可太冒犯了",
+            "特朗普一句话击穿油市！布油盘中跌超7%，美国库存创纪录暴跌也挡不住"
+          ],
+          "source_ids": [
+            "baidu",
+            "ifeng",
+            "wallstreetcn-hot"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c35",
+          "representative_title": "普京：亲爱的朋友一日不见如隔三秋",
+          "domain": "国际关系与军事",
+          "size": 2,
+          "sample_titles": [
+            "普京：亲爱的朋友一日不见如隔三秋",
+            "视频丨普京对习近平说：亲爱的朋友，一日不见，如隔三秋"
+          ],
+          "source_ids": [
+            "toutiao",
+            "thepaper"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c25",
+          "representative_title": "中俄签署并发表联合声明有何深意",
+          "domain": "国际关系与军事",
+          "size": 1,
+          "sample_titles": [
+            "中俄签署并发表联合声明有何深意"
+          ],
+          "source_ids": [
+            "douyin"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c26",
+          "representative_title": "普京结束对中国的国事访问，乘专机离开北京，如何评价此次来访？",
+          "domain": "国际关系与军事",
+          "size": 1,
+          "sample_titles": [
+            "普京结束对中国的国事访问，乘专机离开北京，如何评价此次来访？"
+          ],
+          "source_ids": [
+            "zhihu"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c27",
+          "representative_title": "泰国内阁取消对 90 多个国家公民的 60 天免签入境政策，恢复之前的入境标准，是出于哪些考虑？",
+          "domain": "国际关系与军事",
+          "size": 1,
+          "sample_titles": [
+            "泰国内阁取消对 90 多个国家公民的 60 天免签入境政策，恢复之前的入境标准，是出于哪些考虑？"
+          ],
+          "source_ids": [
+            "zhihu"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c36",
+          "representative_title": "李在明称以色列总理已被列为战犯",
+          "domain": "国际关系与军事",
+          "size": 1,
+          "sample_titles": [
+            "李在明称以色列总理已被列为战犯"
+          ],
+          "source_ids": [
+            "toutiao"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c38",
+          "representative_title": "普京上飞机前依依不舍久久交谈",
+          "domain": "国际关系与军事",
+          "size": 1,
+          "sample_titles": [
+            "普京上飞机前依依不舍久久交谈"
+          ],
+          "source_ids": [
+            "toutiao"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c40",
+          "representative_title": "巴勒斯坦青年向以军自首 母亲拥抱",
+          "domain": "国际关系与军事",
+          "size": 1,
+          "sample_titles": [
+            "巴勒斯坦青年向以军自首 母亲拥抱"
+          ],
+          "source_ids": [
+            "toutiao"
+          ],
+          "max_hot": 0.0
+        }
+      ],
+      "政治与公共安全": [
+        {
+          "cluster_id": "c49",
+          "representative_title": "19岁男孩骑摩托炸街被制裁",
+          "domain": "政治与公共安全",
+          "size": 54,
+          "sample_titles": [
+            "19岁男孩骑摩托炸街被制裁",
+            "国台办发言人就台湾地区领导人“5·20”讲话表态：充斥谎言与欺骗、敌意与对抗",
+            "铁路部门回应“3岁女童高铁座位与母亲相隔8节车厢”：持续优化相关功能，提升用户体验",
+            "澎湃回声｜广州荔湾区最新回应：黄三、李四可对应真实、合法的权利人",
+            "不交论文交作品！华东师大36名学生凭文学创作获硕士学位"
+          ],
+          "source_ids": [
+            "tieba",
+            "thepaper",
+            "cls-hot",
+            "ifeng",
+            "wallstreetcn-hot",
+            "36kr",
+            "bilibili-hot-search",
+            "xueqiu"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c13",
+          "representative_title": "北京市级机关搬迁将于2026年底完成",
+          "domain": "政治与公共安全",
+          "size": 4,
+          "sample_titles": [
+            "北京市级机关搬迁将于2026年底完成",
+            "北京市级机关搬迁将于2026年底完成",
+            "华尔街见闻早餐FM-Radio | 2026年5月21日",
+            "Omdia：倍思2026年一季度OWS耳夹耳机出货量全球第二，非手机厂商第一"
+          ],
+          "source_ids": [
+            "baidu",
+            "toutiao",
+            "wallstreetcn-hot",
+            "36kr"
+          ],
+          "max_hot": 0.0
+        }
+      ],
+      "财政金融": [],
+      "产业与公司": [
+        {
+          "cluster_id": "c9",
+          "representative_title": "中国拿下90%超大型油轮新订单",
+          "domain": "产业与公司",
+          "size": 1,
+          "sample_titles": [
+            "中国拿下90%超大型油轮新订单"
+          ],
+          "source_ids": [
+            "baidu"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c29",
+          "representative_title": "泡药风波下，杨梅价格大跳水，漳州龙海杨梅年产值近 10 亿元，行业该如何重塑口碑？还能放心吃吗？",
+          "domain": "产业与公司",
+          "size": 1,
+          "sample_titles": [
+            "泡药风波下，杨梅价格大跳水，漳州龙海杨梅年产值近 10 亿元，行业该如何重塑口碑？还能放心吃吗？"
+          ],
+          "source_ids": [
+            "zhihu"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c32",
+          "representative_title": "小鹏 GX 正式上市，26.98 万起，有哪些技术亮点？预计销量如何，能否脱颖而出？",
+          "domain": "产业与公司",
+          "size": 1,
+          "sample_titles": [
+            "小鹏 GX 正式上市，26.98 万起，有哪些技术亮点？预计销量如何，能否脱颖而出？"
+          ],
+          "source_ids": [
+            "zhihu"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c41",
+          "representative_title": "中国敲定200架波音飞机",
+          "domain": "产业与公司",
+          "size": 1,
+          "sample_titles": [
+            "中国敲定200架波音飞机"
+          ],
+          "source_ids": [
+            "tieba"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c47",
+          "representative_title": "娜美寿司开怼银行神操作",
+          "domain": "产业与公司",
+          "size": 1,
+          "sample_titles": [
+            "娜美寿司开怼银行神操作"
+          ],
+          "source_ids": [
+            "tieba"
+          ],
+          "max_hot": 0.0
+        }
+      ],
+      "消费市场": [
+        {
+          "cluster_id": "c0",
+          "representative_title": "米粉店老板回应本地人7元游客13元",
+          "domain": "消费市场",
+          "size": 4,
+          "sample_titles": [
+            "米粉店老板回应本地人7元游客13元",
+            "同样米粉“本地人7元游客13元”",
+            "桂林阳朔一米粉店本地人 7 元游客 13 元，市监局回应正在调查中，如何看待此事？你遇到过这种情况吗？",
+            "米粉店老板回应本地人7元游客13元"
+          ],
+          "source_ids": [
+            "weibo",
+            "baidu",
+            "zhihu",
+            "toutiao"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c12",
+          "representative_title": "泡药杨梅事件后卖惨无法挽回信任",
+          "domain": "消费市场",
+          "size": 2,
+          "sample_titles": [
+            "泡药杨梅事件后卖惨无法挽回信任",
+            "福建漳州通报“泡药杨梅”：已追回问题杨梅540公斤，5人被刑拘"
+          ],
+          "source_ids": [
+            "baidu",
+            "thepaper"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c23",
+          "representative_title": "论配饰对穿搭的重要性",
+          "domain": "消费市场",
+          "size": 1,
+          "sample_titles": [
+            "论配饰对穿搭的重要性"
+          ],
+          "source_ids": [
+            "douyin"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c24",
+          "representative_title": "万物皆可粉彩系",
+          "domain": "消费市场",
+          "size": 1,
+          "sample_titles": [
+            "万物皆可粉彩系"
+          ],
+          "source_ids": [
+            "douyin"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c31",
+          "representative_title": "景区大门越建越远，游客得换乘多次摆渡车，景区抛弃「门票经济」后，为什么总喜欢在「摆渡车」上动心思？",
+          "domain": "消费市场",
+          "size": 1,
+          "sample_titles": [
+            "景区大门越建越远，游客得换乘多次摆渡车，景区抛弃「门票经济」后，为什么总喜欢在「摆渡车」上动心思？"
+          ],
+          "source_ids": [
+            "zhihu"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c48",
+          "representative_title": "山姆开业日,顾客偷吃大肘子",
+          "domain": "消费市场",
+          "size": 1,
+          "sample_titles": [
+            "山姆开业日,顾客偷吃大肘子"
+          ],
+          "source_ids": [
+            "tieba"
+          ],
+          "max_hot": 0.0
+        }
+      ],
+      "科技互联网": [
+        {
+          "cluster_id": "c1",
+          "representative_title": "特斯拉监督版FSD入华",
+          "domain": "科技互联网",
+          "size": 2,
+          "sample_titles": [
+            "特斯拉监督版FSD入华",
+            "特斯拉官宣：监督版FSD登陆中国"
+          ],
+          "source_ids": [
+            "weibo",
+            "baidu"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c19",
+          "representative_title": "一组数据看懂我国硬核算力网",
+          "domain": "科技互联网",
+          "size": 1,
+          "sample_titles": [
+            "一组数据看懂我国硬核算力网"
+          ],
+          "source_ids": [
+            "douyin"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c22",
+          "representative_title": "抖音全民写作大赛开赛",
+          "domain": "科技互联网",
+          "size": 1,
+          "sample_titles": [
+            "抖音全民写作大赛开赛"
+          ],
+          "source_ids": [
+            "douyin"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c42",
+          "representative_title": "闲鱼遇神人,用豆包鉴内存真伪",
+          "domain": "科技互联网",
+          "size": 1,
+          "sample_titles": [
+            "闲鱼遇神人,用豆包鉴内存真伪"
+          ],
+          "source_ids": [
+            "tieba"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c43",
+          "representative_title": "Fantia新规:给作品打码",
+          "domain": "科技互联网",
+          "size": 1,
+          "sample_titles": [
+            "Fantia新规:给作品打码"
+          ],
+          "source_ids": [
+            "tieba"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c45",
+          "representative_title": "官方致歉:深海迷航2确认优化",
+          "domain": "科技互联网",
+          "size": 1,
+          "sample_titles": [
+            "官方致歉:深海迷航2确认优化"
+          ],
+          "source_ids": [
+            "tieba"
+          ],
+          "max_hot": 0.0
+        }
+      ],
+      "文体娱乐": [
+        {
+          "cluster_id": "c28",
+          "representative_title": "美剧《黑袍纠察队》系列，算优秀结局，平庸结局，还是烂尾?",
+          "domain": "文体娱乐",
+          "size": 2,
+          "sample_titles": [
+            "美剧《黑袍纠察队》系列，算优秀结局，平庸结局，还是烂尾?",
+            "黑袍大结局彻底烂尾了吗"
+          ],
+          "source_ids": [
+            "zhihu",
+            "bilibili-hot-search"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c3",
+          "representative_title": "曝铁证王玉雯换张艺凡",
+          "domain": "文体娱乐",
+          "size": 1,
+          "sample_titles": [
+            "曝铁证王玉雯换张艺凡"
+          ],
+          "source_ids": [
+            "weibo"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c7",
+          "representative_title": "谢娜发了快乐大本营片段",
+          "domain": "文体娱乐",
+          "size": 1,
+          "sample_titles": [
+            "谢娜发了快乐大本营片段"
+          ],
+          "source_ids": [
+            "weibo"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c30",
+          "representative_title": "为什么游戏的 BOSS，都在圆形的大场子里等你？他们就不能在楼梯间、在悬崖边、在公共厕所里跟你打？",
+          "domain": "文体娱乐",
+          "size": 1,
+          "sample_titles": [
+            "为什么游戏的 BOSS，都在圆形的大场子里等你？他们就不能在楼梯间、在悬崖边、在公共厕所里跟你打？"
+          ],
+          "source_ids": [
+            "zhihu"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c33",
+          "representative_title": "一块顶级的墨在古代有多贵？真的像《家业》中一样千金难求吗？",
+          "domain": "文体娱乐",
+          "size": 1,
+          "sample_titles": [
+            "一块顶级的墨在古代有多贵？真的像《家业》中一样千金难求吗？"
+          ],
+          "source_ids": [
+            "zhihu"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c34",
+          "representative_title": "520 档期三部新片「三英战吕布」，能否撼动《给阿嬷的情书》？",
+          "domain": "文体娱乐",
+          "size": 1,
+          "sample_titles": [
+            "520 档期三部新片「三英战吕布」，能否撼动《给阿嬷的情书》？"
+          ],
+          "source_ids": [
+            "zhihu"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c44",
+          "representative_title": "白金大神翻车,新书被批毒点",
+          "domain": "文体娱乐",
+          "size": 1,
+          "sample_titles": [
+            "白金大神翻车,新书被批毒点"
+          ],
+          "source_ids": [
+            "tieba"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c46",
+          "representative_title": "嫌丢人?黑袍主演缺席主创首映",
+          "domain": "文体娱乐",
+          "size": 1,
+          "sample_titles": [
+            "嫌丢人?黑袍主演缺席主创首映"
+          ],
+          "source_ids": [
+            "tieba"
+          ],
+          "max_hot": 0.0
+        }
+      ],
+      "教育科研": [],
+      "医疗健康": [
+        {
+          "cluster_id": "c4",
+          "representative_title": "碳水脸是对碳水的污名化",
+          "domain": "医疗健康",
+          "size": 2,
+          "sample_titles": [
+            "碳水脸是对碳水的污名化",
+            "深扒药水杨梅的化学真相"
+          ],
+          "source_ids": [
+            "weibo",
+            "bilibili-hot-search"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c16",
+          "representative_title": "一群人里蚊子为什么总叮你",
+          "domain": "医疗健康",
+          "size": 1,
+          "sample_titles": [
+            "一群人里蚊子为什么总叮你"
+          ],
+          "source_ids": [
+            "baidu"
+          ],
+          "max_hot": 0.0
+        }
+      ],
+      "生态环境": [],
+      "社会民生": [
+        {
+          "cluster_id": "c11",
+          "representative_title": "今日小满 万物小得盈满",
+          "domain": "社会民生",
+          "size": 2,
+          "sample_titles": [
+            "今日小满 万物小得盈满",
+            "今天是小满"
+          ],
+          "source_ids": [
+            "baidu",
+            "douyin"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c15",
+          "representative_title": "男子身体不适坐路边摇椅安详去世",
+          "domain": "社会民生",
+          "size": 2,
+          "sample_titles": [
+            "男子身体不适坐路边摇椅安详去世",
+            "男子身体不适坐路边摇椅安详去世"
+          ],
+          "source_ids": [
+            "baidu",
+            "toutiao"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c2",
+          "representative_title": "小满节气里的烟火诗意",
+          "domain": "社会民生",
+          "size": 1,
+          "sample_titles": [
+            "小满节气里的烟火诗意"
+          ],
+          "source_ids": [
+            "weibo"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c10",
+          "representative_title": "南太行失窃网红松树被偷偷还回来了",
+          "domain": "社会民生",
+          "size": 1,
+          "sample_titles": [
+            "南太行失窃网红松树被偷偷还回来了"
+          ],
+          "source_ids": [
+            "baidu"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c20",
+          "representative_title": "这蛋糕暖到心坎里了",
+          "domain": "社会民生",
+          "size": 1,
+          "sample_titles": [
+            "这蛋糕暖到心坎里了"
+          ],
+          "source_ids": [
+            "douyin"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c21",
+          "representative_title": "爱的100种语言",
+          "domain": "社会民生",
+          "size": 1,
+          "sample_titles": [
+            "爱的100种语言"
+          ],
+          "source_ids": [
+            "douyin"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c37",
+          "representative_title": "何为“小满”",
+          "domain": "社会民生",
+          "size": 1,
+          "sample_titles": [
+            "何为“小满”"
+          ],
+          "source_ids": [
+            "toutiao"
+          ],
+          "max_hot": 0.0
+        },
+        {
+          "cluster_id": "c39",
+          "representative_title": "女子在博物馆看到“闺蜜”了",
+          "domain": "社会民生",
+          "size": 1,
+          "sample_titles": [
+            "女子在博物馆看到“闺蜜”了"
+          ],
+          "source_ids": [
+            "toutiao"
+          ],
+          "max_hot": 0.0
+        }
+      ],
+      "其他": []
+    },
+    "flat_clusters": [
+      {
+        "cluster_id": "c0",
+        "representative_title": "米粉店老板回应本地人7元游客13元",
+        "domain": "消费市场",
+        "size": 4,
+        "sample_titles": [
+          "米粉店老板回应本地人7元游客13元",
+          "同样米粉“本地人7元游客13元”",
+          "桂林阳朔一米粉店本地人 7 元游客 13 元，市监局回应正在调查中，如何看待此事？你遇到过这种情况吗？",
+          "米粉店老板回应本地人7元游客13元"
+        ],
+        "source_ids": [
+          "weibo",
+          "baidu",
+          "zhihu",
+          "toutiao"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c1",
+        "representative_title": "特斯拉监督版FSD入华",
+        "domain": "科技互联网",
+        "size": 2,
+        "sample_titles": [
+          "特斯拉监督版FSD入华",
+          "特斯拉官宣：监督版FSD登陆中国"
+        ],
+        "source_ids": [
+          "weibo",
+          "baidu"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c2",
+        "representative_title": "小满节气里的烟火诗意",
+        "domain": "社会民生",
+        "size": 1,
+        "sample_titles": [
+          "小满节气里的烟火诗意"
+        ],
+        "source_ids": [
+          "weibo"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c3",
+        "representative_title": "曝铁证王玉雯换张艺凡",
+        "domain": "文体娱乐",
+        "size": 1,
+        "sample_titles": [
+          "曝铁证王玉雯换张艺凡"
+        ],
+        "source_ids": [
+          "weibo"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c4",
+        "representative_title": "碳水脸是对碳水的污名化",
+        "domain": "医疗健康",
+        "size": 2,
+        "sample_titles": [
+          "碳水脸是对碳水的污名化",
+          "深扒药水杨梅的化学真相"
+        ],
+        "source_ids": [
+          "weibo",
+          "bilibili-hot-search"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c5",
+        "representative_title": "马刺vs雷霆",
+        "domain": "体育竞技",
+        "size": 2,
+        "sample_titles": [
+          "马刺vs雷霆",
+          "*ST闻泰"
+        ],
+        "source_ids": [
+          "weibo",
+          "xueqiu"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c6",
+        "representative_title": "孙颖莎叫自己中国科比",
+        "domain": "体育竞技",
+        "size": 4,
+        "sample_titles": [
+          "孙颖莎叫自己中国科比",
+          "孙颖莎备战世乒赛读科比自传",
+          "亚运会中国代表团整体缩编",
+          "全球疯抢尿素中国为何不慌"
+        ],
+        "source_ids": [
+          "weibo",
+          "tieba",
+          "bilibili-hot-search"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c7",
+        "representative_title": "谢娜发了快乐大本营片段",
+        "domain": "文体娱乐",
+        "size": 1,
+        "sample_titles": [
+          "谢娜发了快乐大本营片段"
+        ],
+        "source_ids": [
+          "weibo"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c8",
+        "representative_title": "哈珀受伤",
+        "domain": "体育竞技",
+        "size": 1,
+        "sample_titles": [
+          "哈珀受伤"
+        ],
+        "source_ids": [
+          "weibo"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c9",
+        "representative_title": "中国拿下90%超大型油轮新订单",
+        "domain": "产业与公司",
+        "size": 1,
+        "sample_titles": [
+          "中国拿下90%超大型油轮新订单"
+        ],
+        "source_ids": [
+          "baidu"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c10",
+        "representative_title": "南太行失窃网红松树被偷偷还回来了",
+        "domain": "社会民生",
+        "size": 1,
+        "sample_titles": [
+          "南太行失窃网红松树被偷偷还回来了"
+        ],
+        "source_ids": [
+          "baidu"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c11",
+        "representative_title": "今日小满 万物小得盈满",
+        "domain": "社会民生",
+        "size": 2,
+        "sample_titles": [
+          "今日小满 万物小得盈满",
+          "今天是小满"
+        ],
+        "source_ids": [
+          "baidu",
+          "douyin"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c12",
+        "representative_title": "泡药杨梅事件后卖惨无法挽回信任",
+        "domain": "消费市场",
+        "size": 2,
+        "sample_titles": [
+          "泡药杨梅事件后卖惨无法挽回信任",
+          "福建漳州通报“泡药杨梅”：已追回问题杨梅540公斤，5人被刑拘"
+        ],
+        "source_ids": [
+          "baidu",
+          "thepaper"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c13",
+        "representative_title": "北京市级机关搬迁将于2026年底完成",
+        "domain": "政治与公共安全",
+        "size": 4,
+        "sample_titles": [
+          "北京市级机关搬迁将于2026年底完成",
+          "北京市级机关搬迁将于2026年底完成",
+          "华尔街见闻早餐FM-Radio | 2026年5月21日",
+          "Omdia：倍思2026年一季度OWS耳夹耳机出货量全球第二，非手机厂商第一"
+        ],
+        "source_ids": [
+          "baidu",
+          "toutiao",
+          "wallstreetcn-hot",
+          "36kr"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c14",
+        "representative_title": "特朗普回应中俄元首会晤",
+        "domain": "国际关系与军事",
+        "size": 5,
+        "sample_titles": [
+          "特朗普回应中俄元首会晤",
+          "特朗普回应中俄元首会晤",
+          "特朗普，“退了一万亿”",
+          "特朗普：不要中国学生，那可太冒犯了",
+          "特朗普一句话击穿油市！布油盘中跌超7%，美国库存创纪录暴跌也挡不住"
+        ],
+        "source_ids": [
+          "baidu",
+          "ifeng",
+          "wallstreetcn-hot"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c15",
+        "representative_title": "男子身体不适坐路边摇椅安详去世",
+        "domain": "社会民生",
+        "size": 2,
+        "sample_titles": [
+          "男子身体不适坐路边摇椅安详去世",
+          "男子身体不适坐路边摇椅安详去世"
+        ],
+        "source_ids": [
+          "baidu",
+          "toutiao"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c16",
+        "representative_title": "一群人里蚊子为什么总叮你",
+        "domain": "医疗健康",
+        "size": 1,
+        "sample_titles": [
+          "一群人里蚊子为什么总叮你"
+        ],
+        "source_ids": [
+          "baidu"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c17",
+        "representative_title": "普京结束访华",
+        "domain": "国际关系与军事",
+        "size": 7,
+        "sample_titles": [
+          "普京结束访华",
+          "普京访华带了哪些企业家",
+          "俄罗斯总统普京结束访华",
+          "京东方A",
+          "北方华创"
+        ],
+        "source_ids": [
+          "douyin",
+          "toutiao",
+          "bilibili-hot-search",
+          "xueqiu"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c18",
+        "representative_title": "雷霆力克马刺大比分扳平",
+        "domain": "体育竞技",
+        "size": 1,
+        "sample_titles": [
+          "雷霆力克马刺大比分扳平"
+        ],
+        "source_ids": [
+          "douyin"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c19",
+        "representative_title": "一组数据看懂我国硬核算力网",
+        "domain": "科技互联网",
+        "size": 1,
+        "sample_titles": [
+          "一组数据看懂我国硬核算力网"
+        ],
+        "source_ids": [
+          "douyin"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c20",
+        "representative_title": "这蛋糕暖到心坎里了",
+        "domain": "社会民生",
+        "size": 1,
+        "sample_titles": [
+          "这蛋糕暖到心坎里了"
+        ],
+        "source_ids": [
+          "douyin"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c21",
+        "representative_title": "爱的100种语言",
+        "domain": "社会民生",
+        "size": 1,
+        "sample_titles": [
+          "爱的100种语言"
+        ],
+        "source_ids": [
+          "douyin"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c22",
+        "representative_title": "抖音全民写作大赛开赛",
+        "domain": "科技互联网",
+        "size": 1,
+        "sample_titles": [
+          "抖音全民写作大赛开赛"
+        ],
+        "source_ids": [
+          "douyin"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c23",
+        "representative_title": "论配饰对穿搭的重要性",
+        "domain": "消费市场",
+        "size": 1,
+        "sample_titles": [
+          "论配饰对穿搭的重要性"
+        ],
+        "source_ids": [
+          "douyin"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c24",
+        "representative_title": "万物皆可粉彩系",
+        "domain": "消费市场",
+        "size": 1,
+        "sample_titles": [
+          "万物皆可粉彩系"
+        ],
+        "source_ids": [
+          "douyin"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c25",
+        "representative_title": "中俄签署并发表联合声明有何深意",
+        "domain": "国际关系与军事",
+        "size": 1,
+        "sample_titles": [
+          "中俄签署并发表联合声明有何深意"
+        ],
+        "source_ids": [
+          "douyin"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c26",
+        "representative_title": "普京结束对中国的国事访问，乘专机离开北京，如何评价此次来访？",
+        "domain": "国际关系与军事",
+        "size": 1,
+        "sample_titles": [
+          "普京结束对中国的国事访问，乘专机离开北京，如何评价此次来访？"
+        ],
+        "source_ids": [
+          "zhihu"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c27",
+        "representative_title": "泰国内阁取消对 90 多个国家公民的 60 天免签入境政策，恢复之前的入境标准，是出于哪些考虑？",
+        "domain": "国际关系与军事",
+        "size": 1,
+        "sample_titles": [
+          "泰国内阁取消对 90 多个国家公民的 60 天免签入境政策，恢复之前的入境标准，是出于哪些考虑？"
+        ],
+        "source_ids": [
+          "zhihu"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c28",
+        "representative_title": "美剧《黑袍纠察队》系列，算优秀结局，平庸结局，还是烂尾?",
+        "domain": "文体娱乐",
+        "size": 2,
+        "sample_titles": [
+          "美剧《黑袍纠察队》系列，算优秀结局，平庸结局，还是烂尾?",
+          "黑袍大结局彻底烂尾了吗"
+        ],
+        "source_ids": [
+          "zhihu",
+          "bilibili-hot-search"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c29",
+        "representative_title": "泡药风波下，杨梅价格大跳水，漳州龙海杨梅年产值近 10 亿元，行业该如何重塑口碑？还能放心吃吗？",
+        "domain": "产业与公司",
+        "size": 1,
+        "sample_titles": [
+          "泡药风波下，杨梅价格大跳水，漳州龙海杨梅年产值近 10 亿元，行业该如何重塑口碑？还能放心吃吗？"
+        ],
+        "source_ids": [
+          "zhihu"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c30",
+        "representative_title": "为什么游戏的 BOSS，都在圆形的大场子里等你？他们就不能在楼梯间、在悬崖边、在公共厕所里跟你打？",
+        "domain": "文体娱乐",
+        "size": 1,
+        "sample_titles": [
+          "为什么游戏的 BOSS，都在圆形的大场子里等你？他们就不能在楼梯间、在悬崖边、在公共厕所里跟你打？"
+        ],
+        "source_ids": [
+          "zhihu"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c31",
+        "representative_title": "景区大门越建越远，游客得换乘多次摆渡车，景区抛弃「门票经济」后，为什么总喜欢在「摆渡车」上动心思？",
+        "domain": "消费市场",
+        "size": 1,
+        "sample_titles": [
+          "景区大门越建越远，游客得换乘多次摆渡车，景区抛弃「门票经济」后，为什么总喜欢在「摆渡车」上动心思？"
+        ],
+        "source_ids": [
+          "zhihu"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c32",
+        "representative_title": "小鹏 GX 正式上市，26.98 万起，有哪些技术亮点？预计销量如何，能否脱颖而出？",
+        "domain": "产业与公司",
+        "size": 1,
+        "sample_titles": [
+          "小鹏 GX 正式上市，26.98 万起，有哪些技术亮点？预计销量如何，能否脱颖而出？"
+        ],
+        "source_ids": [
+          "zhihu"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c33",
+        "representative_title": "一块顶级的墨在古代有多贵？真的像《家业》中一样千金难求吗？",
+        "domain": "文体娱乐",
+        "size": 1,
+        "sample_titles": [
+          "一块顶级的墨在古代有多贵？真的像《家业》中一样千金难求吗？"
+        ],
+        "source_ids": [
+          "zhihu"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c34",
+        "representative_title": "520 档期三部新片「三英战吕布」，能否撼动《给阿嬷的情书》？",
+        "domain": "文体娱乐",
+        "size": 1,
+        "sample_titles": [
+          "520 档期三部新片「三英战吕布」，能否撼动《给阿嬷的情书》？"
+        ],
+        "source_ids": [
+          "zhihu"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c35",
+        "representative_title": "普京：亲爱的朋友一日不见如隔三秋",
+        "domain": "国际关系与军事",
+        "size": 2,
+        "sample_titles": [
+          "普京：亲爱的朋友一日不见如隔三秋",
+          "视频丨普京对习近平说：亲爱的朋友，一日不见，如隔三秋"
+        ],
+        "source_ids": [
+          "toutiao",
+          "thepaper"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c36",
+        "representative_title": "李在明称以色列总理已被列为战犯",
+        "domain": "国际关系与军事",
+        "size": 1,
+        "sample_titles": [
+          "李在明称以色列总理已被列为战犯"
+        ],
+        "source_ids": [
+          "toutiao"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c37",
+        "representative_title": "何为“小满”",
+        "domain": "社会民生",
+        "size": 1,
+        "sample_titles": [
+          "何为“小满”"
+        ],
+        "source_ids": [
+          "toutiao"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c38",
+        "representative_title": "普京上飞机前依依不舍久久交谈",
+        "domain": "国际关系与军事",
+        "size": 1,
+        "sample_titles": [
+          "普京上飞机前依依不舍久久交谈"
+        ],
+        "source_ids": [
+          "toutiao"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c39",
+        "representative_title": "女子在博物馆看到“闺蜜”了",
+        "domain": "社会民生",
+        "size": 1,
+        "sample_titles": [
+          "女子在博物馆看到“闺蜜”了"
+        ],
+        "source_ids": [
+          "toutiao"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c40",
+        "representative_title": "巴勒斯坦青年向以军自首 母亲拥抱",
+        "domain": "国际关系与军事",
+        "size": 1,
+        "sample_titles": [
+          "巴勒斯坦青年向以军自首 母亲拥抱"
+        ],
+        "source_ids": [
+          "toutiao"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c41",
+        "representative_title": "中国敲定200架波音飞机",
+        "domain": "产业与公司",
+        "size": 1,
+        "sample_titles": [
+          "中国敲定200架波音飞机"
+        ],
+        "source_ids": [
+          "tieba"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c42",
+        "representative_title": "闲鱼遇神人,用豆包鉴内存真伪",
+        "domain": "科技互联网",
+        "size": 1,
+        "sample_titles": [
+          "闲鱼遇神人,用豆包鉴内存真伪"
+        ],
+        "source_ids": [
+          "tieba"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c43",
+        "representative_title": "Fantia新规:给作品打码",
+        "domain": "科技互联网",
+        "size": 1,
+        "sample_titles": [
+          "Fantia新规:给作品打码"
+        ],
+        "source_ids": [
+          "tieba"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c44",
+        "representative_title": "白金大神翻车,新书被批毒点",
+        "domain": "文体娱乐",
+        "size": 1,
+        "sample_titles": [
+          "白金大神翻车,新书被批毒点"
+        ],
+        "source_ids": [
+          "tieba"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c45",
+        "representative_title": "官方致歉:深海迷航2确认优化",
+        "domain": "科技互联网",
+        "size": 1,
+        "sample_titles": [
+          "官方致歉:深海迷航2确认优化"
+        ],
+        "source_ids": [
+          "tieba"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c46",
+        "representative_title": "嫌丢人?黑袍主演缺席主创首映",
+        "domain": "文体娱乐",
+        "size": 1,
+        "sample_titles": [
+          "嫌丢人?黑袍主演缺席主创首映"
+        ],
+        "source_ids": [
+          "tieba"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c47",
+        "representative_title": "娜美寿司开怼银行神操作",
+        "domain": "产业与公司",
+        "size": 1,
+        "sample_titles": [
+          "娜美寿司开怼银行神操作"
+        ],
+        "source_ids": [
+          "tieba"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c48",
+        "representative_title": "山姆开业日,顾客偷吃大肘子",
+        "domain": "消费市场",
+        "size": 1,
+        "sample_titles": [
+          "山姆开业日,顾客偷吃大肘子"
+        ],
+        "source_ids": [
+          "tieba"
+        ],
+        "max_hot": 0.0
+      },
+      {
+        "cluster_id": "c49",
+        "representative_title": "19岁男孩骑摩托炸街被制裁",
+        "domain": "政治与公共安全",
+        "size": 54,
+        "sample_titles": [
+          "19岁男孩骑摩托炸街被制裁",
+          "国台办发言人就台湾地区领导人“5·20”讲话表态：充斥谎言与欺骗、敌意与对抗",
+          "铁路部门回应“3岁女童高铁座位与母亲相隔8节车厢”：持续优化相关功能，提升用户体验",
+          "澎湃回声｜广州荔湾区最新回应：黄三、李四可对应真实、合法的权利人",
+          "不交论文交作品！华东师大36名学生凭文学创作获硕士学位"
+        ],
+        "source_ids": [
+          "tieba",
+          "thepaper",
+          "cls-hot",
+          "ifeng",
+          "wallstreetcn-hot",
+          "36kr",
+          "bilibili-hot-search",
+          "xueqiu"
+        ],
+        "max_hot": 0.0
+      }
+    ],
+    "meta": {
+      "input_count": 130,
+      "cluster_count": 50,
+      "max_clusters": 50,
+      "join_similarity": 0.38,
+      "domain_method": "llm_batch"
+    }
+  },
+  "classification_stats": {
+    "topics_by_category": {
+      "经济类舆论": [
+        {
+          "topic": "英伟达财报超预期引爆全球科技股与芯片产业链行情",
+          "sentiment": "正面",
+          "comment": "业绩与AI需求强劲共振，带动美股及A股半导体板块集体反弹，市场信心显著提振。",
+          "heat_score": 92.0,
+          "category": "经济类舆论",
+          "_event_index": 2
+        },
+        {
+          "topic": "SpaceX正式递交IPO招股文件冲刺纳斯达克",
+          "sentiment": "中性",
+          "comment": "商业航天巨头登陆资本市场备受瞩目，巨额亏损与高估值并存引发投资者对盈利模式的理性审视。",
+          "heat_score": 80.0,
+          "category": "经济类舆论",
+          "_event_index": 5
+        }
+      ],
+      "突发事件舆论": [],
+      "法治类舆论": [
+        {
+          "topic": "福建漳州通报“泡药杨梅”事件5人被刑拘",
+          "sentiment": "负面",
+          "comment": "食品安全问题引发消费者信任危机，警方迅速介入刑拘彰显监管零容忍态度，行业需加速重塑口碑。",
+          "heat_score": 88.0,
+          "category": "法治类舆论",
+          "_event_index": 3
+        }
+      ],
+      "文娱类舆论": [],
+      "科教类舆论": [
+        {
+          "topic": "特斯拉监督版FSD正式登陆中国市场",
+          "sentiment": "正面",
+          "comment": "高阶自动驾驶技术入华将加剧国内智能驾驶赛道竞争，推动汽车产业技术迭代与法规完善。",
+          "heat_score": 78.0,
+          "category": "科教类舆论",
+          "_event_index": 6
+        }
+      ],
+      "国际关系类舆论": [
+        {
+          "topic": "普京结束访华并发表中俄联合声明",
+          "sentiment": "正面",
+          "comment": "中俄高层互动频繁，联合声明释放深化战略合作信号，地缘政治影响深远。",
+          "heat_score": 95.0,
+          "category": "国际关系类舆论",
+          "_event_index": 1
+        }
+      ],
+      "健康类舆论": [],
+      "治理类舆论": [
+        {
+          "topic": "北京市级机关搬迁将于2026年底完成",
+          "sentiment": "中性",
+          "comment": "城市功能疏解与行政中心优化布局稳步推进，有助于缓解核心区压力并促进京津冀协同发展。",
+          "heat_score": 72.0,
+          "category": "治理类舆论",
+          "_event_index": 7
+        }
+      ],
+      "民生类舆论": [
+        {
+          "topic": "桂林阳朔米粉店遭质疑“本地人7元游客13元”",
+          "sentiment": "负面",
+          "comment": "差异化定价引发游客公平性质疑，市监局介入调查折射旅游市场规范化治理的紧迫性。",
+          "heat_score": 85.0,
+          "category": "民生类舆论",
+          "_event_index": 4
+        },
+        {
+          "topic": "上海“520”结婚登记数创9年新高",
+          "sentiment": "正面",
+          "comment": "择吉日登记现象反映公众对婚姻仪式感的情感诉求，折射出社会婚育观念的多元化与温情回归。",
+          "heat_score": 68.0,
+          "category": "民生类舆论",
+          "_event_index": 8
+        }
+      ],
+      "生态环境类舆论": [],
+      "其他": []
+    },
+    "category_display_order": [
+      "国际关系类舆论",
+      "经济类舆论",
+      "法治类舆论",
+      "民生类舆论",
+      "科教类舆论",
+      "治理类舆论"
+    ],
+    "category_heat_map": {
+      "经济类舆论": 92.0,
+      "突发事件舆论": 0.0,
+      "法治类舆论": 88.0,
+      "文娱类舆论": 0.0,
+      "科教类舆论": 78.0,
+      "国际关系类舆论": 95.0,
+      "健康类舆论": 0.0,
+      "治理类舆论": 72.0,
+      "民生类舆论": 85.0,
+      "生态环境类舆论": 0.0,
+      "其他": 0.0
+    }
+  },
+  "analysis_result": {
+    "top_topics": [
+      {
+        "topic": "普京结束访华并发表中俄联合声明",
+        "sentiment": "正面",
+        "comment": "中俄高层互动频繁，联合声明释放深化战略合作信号，地缘政治影响深远。",
+        "heat_score": 95.0,
+        "category": "国际关系类舆论",
+        "_event_index": 1
+      },
+      {
+        "topic": "英伟达财报超预期引爆全球科技股与芯片产业链行情",
+        "sentiment": "正面",
+        "comment": "业绩与AI需求强劲共振，带动美股及A股半导体板块集体反弹，市场信心显著提振。",
+        "heat_score": 92.0,
+        "category": "经济类舆论",
+        "_event_index": 2
+      },
+      {
+        "topic": "福建漳州通报“泡药杨梅”事件5人被刑拘",
+        "sentiment": "负面",
+        "comment": "食品安全问题引发消费者信任危机，警方迅速介入刑拘彰显监管零容忍态度，行业需加速重塑口碑。",
+        "heat_score": 88.0,
+        "category": "法治类舆论",
+        "_event_index": 3
+      },
+      {
+        "topic": "桂林阳朔米粉店遭质疑“本地人7元游客13元”",
+        "sentiment": "负面",
+        "comment": "差异化定价引发游客公平性质疑，市监局介入调查折射旅游市场规范化治理的紧迫性。",
+        "heat_score": 85.0,
+        "category": "民生类舆论",
+        "_event_index": 4
+      },
+      {
+        "topic": "SpaceX正式递交IPO招股文件冲刺纳斯达克",
+        "sentiment": "中性",
+        "comment": "商业航天巨头登陆资本市场备受瞩目，巨额亏损与高估值并存引发投资者对盈利模式的理性审视。",
+        "heat_score": 80.0,
+        "category": "经济类舆论",
+        "_event_index": 5
+      },
+      {
+        "topic": "特斯拉监督版FSD正式登陆中国市场",
+        "sentiment": "正面",
+        "comment": "高阶自动驾驶技术入华将加剧国内智能驾驶赛道竞争，推动汽车产业技术迭代与法规完善。",
+        "heat_score": 78.0,
+        "category": "科教类舆论",
+        "_event_index": 6
+      },
+      {
+        "topic": "北京市级机关搬迁将于2026年底完成",
+        "sentiment": "中性",
+        "comment": "城市功能疏解与行政中心优化布局稳步推进，有助于缓解核心区压力并促进京津冀协同发展。",
+        "heat_score": 72.0,
+        "category": "治理类舆论",
+        "_event_index": 7
+      },
+      {
+        "topic": "上海“520”结婚登记数创9年新高",
+        "sentiment": "正面",
+        "comment": "择吉日登记现象反映公众对婚姻仪式感的情感诉求，折射出社会婚育观念的多元化与温情回归。",
+        "heat_score": 68.0,
+        "category": "民生类舆论",
+        "_event_index": 8
+      }
+    ],
+    "summary": "整体舆情呈现国际外交与宏观经济双主线并行的态势，中俄高层互动与英伟达财报超预期成为舆论焦点。同时，食品安全、旅游定价等民生议题持续引发公众对市场监管与公平交易的关注，科技入华与资本市场动态则彰显产业升级与全球化布局的活跃趋势。"
+  },
+  "forum_discussion": "【Insight 深度观察】此次联合声明标志着中俄战略协作从应对短期地缘压力转向构建长期制度性框架，深层动因在于双方共同应对西方体系性围堵与推动国际秩序多极化的结构性需求。合作重心正由传统能源贸易向金融结算、产业链互补及高科技联合研发延伸，预示着欧亚大陆经济内循环体系的加速成型。这一进程将重塑全球供应链布局，并在中长期削弱单边制裁的威慑效力，形成更为稳固的非西方战略支点。\n\n【Media 媒体观点】主流媒体普遍聚焦于声明中关于主权安全互保与经济深度融合的表述，整体呈现稳健积极的叙事基调，强调双边关系为动荡世界注入确定性。西方舆论则多从阵营对抗视角解读，担忧中俄协作可能改变乌克兰战场态势或规避次级制裁，情绪以警惕与质疑为主。社交平台舆论呈现明显分化，国内网民多持支持态度并关注民生与经济红利，而国际舆论场则围绕制裁边界与地缘博弈展开激烈争论，整体情绪偏向复杂与审慎。\n\n【Query 关键事实】目前已确认双方签署了涵盖能源、农业、金融及人文领域的多项合作文件，并重申了在联合国框架下的多边主义立场与核心利益互认。声明明确了扩大本币结算规模与跨境基础设施互联互通的具体方向，但尚未披露具体项目的资金规模与落地时间表。后续仍需观察联合声明中涉乌克兰政治解决条款的实际执行力度，以及欧美对中俄金融与能源合作可能采取的次级制裁反制措施。\n\n【综合判断】该事件的核心机遇在于加速欧亚大陆供应链重组与人民币国际化进程，为相关产业提供规避传统金融壁垒的新通道，核心风险则集中于次级制裁升级压力及与西方经贸关系的结构性摩擦。未来演变将呈现从高层政治共识向基层制度对接过渡的特征，双边合作有望在能源定价、跨境支付及关键矿产领域形成常态化机制。建议重点关注能源与跨境金融企业的合规布局、外贸供应链的替代路径调整，以及全球南方国家在经贸规则重构中的跟进策略。",
+  "news_list": [
+    {
+      "title": "米粉店老板回应本地人7元游客13元",
+      "url": "https://s.weibo.com/weibo?q=%23%E7%B1%B3%E7%B2%89%E5%BA%97%E8%80%81%E6%9D%BF%E5%9B%9E%E5%BA%94%E6%9C%AC%E5%9C%B0%E4%BA%BA7%E5%85%83%E6%B8%B8%E5%AE%A213%E5%85%83%23&t=31&band_rank=1&Refer=top",
+      "source_id": "weibo",
+      "source_name": "微博",
+      "rank": 1,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "特斯拉监督版FSD入华",
+      "url": "https://s.weibo.com/weibo?q=%23%E7%89%B9%E6%96%AF%E6%8B%89%E7%9B%91%E7%9D%A3%E7%89%88FSD%E5%85%A5%E5%8D%8E%23&t=31&band_rank=2&Refer=top",
+      "source_id": "weibo",
+      "source_name": "微博",
+      "rank": 2,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "小满节气里的烟火诗意",
+      "url": "https://s.weibo.com/weibo?q=%23%E5%B0%8F%E6%BB%A1%E8%8A%82%E6%B0%94%E9%87%8C%E7%9A%84%E7%83%9F%E7%81%AB%E8%AF%97%E6%84%8F%23&t=31&band_rank=3&Refer=top",
+      "source_id": "weibo",
+      "source_name": "微博",
+      "rank": 3,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "曝铁证王玉雯换张艺凡",
+      "url": "https://s.weibo.com/weibo?q=%23%E6%9B%9D%E9%93%81%E8%AF%81%E7%8E%8B%E7%8E%89%E9%9B%AF%E6%8D%A2%E5%BC%A0%E8%89%BA%E5%87%A1%23&t=31&band_rank=4&Refer=top",
+      "source_id": "weibo",
+      "source_name": "微博",
+      "rank": 4,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "碳水脸是对碳水的污名化",
+      "url": "https://s.weibo.com/weibo?q=%23%E7%A2%B3%E6%B0%B4%E8%84%B8%E6%98%AF%E5%AF%B9%E7%A2%B3%E6%B0%B4%E7%9A%84%E6%B1%A1%E5%90%8D%E5%8C%96%23&t=31&band_rank=5&Refer=top",
+      "source_id": "weibo",
+      "source_name": "微博",
+      "rank": 5,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "马刺vs雷霆",
+      "url": "https://s.weibo.com/weibo?q=%E9%A9%AC%E5%88%BAvs%E9%9B%B7%E9%9C%86&t=31&band_rank=6&Refer=top",
+      "source_id": "weibo",
+      "source_name": "微博",
+      "rank": 6,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "孙颖莎叫自己中国科比",
+      "url": "https://s.weibo.com/weibo?q=%23%E5%AD%99%E9%A2%96%E8%8E%8E%E5%8F%AB%E8%87%AA%E5%B7%B1%E4%B8%AD%E5%9B%BD%E7%A7%91%E6%AF%94%23&t=31&band_rank=7&Refer=top",
+      "source_id": "weibo",
+      "source_name": "微博",
+      "rank": 7,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "谢娜发了快乐大本营片段",
+      "url": "https://s.weibo.com/weibo?q=%23%E8%B0%A2%E5%A8%9C%E5%8F%91%E4%BA%86%E5%BF%AB%E4%B9%90%E5%A4%A7%E6%9C%AC%E8%90%A5%E7%89%87%E6%AE%B5%23&t=31&band_rank=8&Refer=top",
+      "source_id": "weibo",
+      "source_name": "微博",
+      "rank": 8,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "孙颖莎备战世乒赛读科比自传",
+      "url": "https://s.weibo.com/weibo?q=%23%E5%AD%99%E9%A2%96%E8%8E%8E%E5%A4%87%E6%88%98%E4%B8%96%E4%B9%92%E8%B5%9B%E8%AF%BB%E7%A7%91%E6%AF%94%E8%87%AA%E4%BC%A0%23&t=31&band_rank=9&Refer=top",
+      "source_id": "weibo",
+      "source_name": "微博",
+      "rank": 9,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "哈珀受伤",
+      "url": "https://s.weibo.com/weibo?q=%E5%93%88%E7%8F%80%E5%8F%97%E4%BC%A4&t=31&band_rank=10&Refer=top",
+      "source_id": "weibo",
+      "source_name": "微博",
+      "rank": 10,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "中国拿下90%超大型油轮新订单",
+      "url": "https://www.baidu.com/s?wd=%E4%B8%AD%E5%9B%BD%E6%8B%BF%E4%B8%8B90%25%E8%B6%85%E5%A4%A7%E5%9E%8B%E6%B2%B9%E8%BD%AE%E6%96%B0%E8%AE%A2%E5%8D%95",
+      "source_id": "baidu",
+      "source_name": "百度热搜",
+      "rank": 1,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "南太行失窃网红松树被偷偷还回来了",
+      "url": "https://www.baidu.com/s?wd=%E5%8D%97%E5%A4%AA%E8%A1%8C%E5%A4%B1%E7%AA%83%E7%BD%91%E7%BA%A2%E6%9D%BE%E6%A0%91%E8%A2%AB%E5%81%B7%E5%81%B7%E8%BF%98%E5%9B%9E%E6%9D%A5%E4%BA%86",
+      "source_id": "baidu",
+      "source_name": "百度热搜",
+      "rank": 2,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "今日小满 万物小得盈满",
+      "url": "https://www.baidu.com/s?wd=%E4%BB%8A%E6%97%A5%E5%B0%8F%E6%BB%A1+%E4%B8%87%E7%89%A9%E5%B0%8F%E5%BE%97%E7%9B%88%E6%BB%A1",
+      "source_id": "baidu",
+      "source_name": "百度热搜",
+      "rank": 3,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "泡药杨梅事件后卖惨无法挽回信任",
+      "url": "https://www.baidu.com/s?wd=%E6%B3%A1%E8%8D%AF%E6%9D%A8%E6%A2%85%E4%BA%8B%E4%BB%B6%E5%90%8E%E5%8D%96%E6%83%A8%E6%97%A0%E6%B3%95%E6%8C%BD%E5%9B%9E%E4%BF%A1%E4%BB%BB",
+      "source_id": "baidu",
+      "source_name": "百度热搜",
+      "rank": 4,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "北京市级机关搬迁将于2026年底完成",
+      "url": "https://www.baidu.com/s?wd=%E5%8C%97%E4%BA%AC%E5%B8%82%E7%BA%A7%E6%9C%BA%E5%85%B3%E6%90%AC%E8%BF%81%E5%B0%86%E4%BA%8E2026%E5%B9%B4%E5%BA%95%E5%AE%8C%E6%88%90",
+      "source_id": "baidu",
+      "source_name": "百度热搜",
+      "rank": 5,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "特朗普回应中俄元首会晤",
+      "url": "https://www.baidu.com/s?wd=%E7%89%B9%E6%9C%97%E6%99%AE%E5%9B%9E%E5%BA%94%E4%B8%AD%E4%BF%84%E5%85%83%E9%A6%96%E4%BC%9A%E6%99%A4",
+      "source_id": "baidu",
+      "source_name": "百度热搜",
+      "rank": 6,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "特斯拉官宣：监督版FSD登陆中国",
+      "url": "https://www.baidu.com/s?wd=%E7%89%B9%E6%96%AF%E6%8B%89%E5%AE%98%E5%AE%A3%EF%BC%9A%E7%9B%91%E7%9D%A3%E7%89%88FSD%E7%99%BB%E9%99%86%E4%B8%AD%E5%9B%BD",
+      "source_id": "baidu",
+      "source_name": "百度热搜",
+      "rank": 7,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "男子身体不适坐路边摇椅安详去世",
+      "url": "https://www.baidu.com/s?wd=%E7%94%B7%E5%AD%90%E8%BA%AB%E4%BD%93%E4%B8%8D%E9%80%82%E5%9D%90%E8%B7%AF%E8%BE%B9%E6%91%87%E6%A4%85%E5%AE%89%E8%AF%A6%E5%8E%BB%E4%B8%96",
+      "source_id": "baidu",
+      "source_name": "百度热搜",
+      "rank": 8,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "同样米粉“本地人7元游客13元”",
+      "url": "https://www.baidu.com/s?wd=%E5%90%8C%E6%A0%B7%E7%B1%B3%E7%B2%89%E2%80%9C%E6%9C%AC%E5%9C%B0%E4%BA%BA7%E5%85%83%E6%B8%B8%E5%AE%A213%E5%85%83%E2%80%9D",
+      "source_id": "baidu",
+      "source_name": "百度热搜",
+      "rank": 9,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "一群人里蚊子为什么总叮你",
+      "url": "https://www.baidu.com/s?wd=%E4%B8%80%E7%BE%A4%E4%BA%BA%E9%87%8C%E8%9A%8A%E5%AD%90%E4%B8%BA%E4%BB%80%E4%B9%88%E6%80%BB%E5%8F%AE%E4%BD%A0",
+      "source_id": "baidu",
+      "source_name": "百度热搜",
+      "rank": 10,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "普京结束访华",
+      "url": "https://www.douyin.com/hot/2506392",
+      "source_id": "douyin",
+      "source_name": "抖音",
+      "rank": 1,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "雷霆力克马刺大比分扳平",
+      "url": "https://www.douyin.com/hot/2506491",
+      "source_id": "douyin",
+      "source_name": "抖音",
+      "rank": 2,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "一组数据看懂我国硬核算力网",
+      "url": "https://www.douyin.com/hot/2506409",
+      "source_id": "douyin",
+      "source_name": "抖音",
+      "rank": 3,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "今天是小满",
+      "url": "https://www.douyin.com/hot/2506459",
+      "source_id": "douyin",
+      "source_name": "抖音",
+      "rank": 4,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "这蛋糕暖到心坎里了",
+      "url": "https://www.douyin.com/hot/2505697",
+      "source_id": "douyin",
+      "source_name": "抖音",
+      "rank": 5,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "爱的100种语言",
+      "url": "https://www.douyin.com/hot/2505500",
+      "source_id": "douyin",
+      "source_name": "抖音",
+      "rank": 6,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "抖音全民写作大赛开赛",
+      "url": "https://www.douyin.com/hot/2505564",
+      "source_id": "douyin",
+      "source_name": "抖音",
+      "rank": 7,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "论配饰对穿搭的重要性",
+      "url": "https://www.douyin.com/hot/2504267",
+      "source_id": "douyin",
+      "source_name": "抖音",
+      "rank": 8,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "万物皆可粉彩系",
+      "url": "https://www.douyin.com/hot/2505499",
+      "source_id": "douyin",
+      "source_name": "抖音",
+      "rank": 9,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "中俄签署并发表联合声明有何深意",
+      "url": "https://www.douyin.com/hot/2506367",
+      "source_id": "douyin",
+      "source_name": "抖音",
+      "rank": 10,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "普京结束对中国的国事访问，乘专机离开北京，如何评价此次来访？",
+      "url": "https://www.zhihu.com/question/2040380147967256150",
+      "source_id": "zhihu",
+      "source_name": "知乎",
+      "rank": 1,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "泰国内阁取消对 90 多个国家公民的 60 天免签入境政策，恢复之前的入境标准，是出于哪些考虑？",
+      "url": "https://www.zhihu.com/question/2040157517372716211",
+      "source_id": "zhihu",
+      "source_name": "知乎",
+      "rank": 2,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "美剧《黑袍纠察队》系列，算优秀结局，平庸结局，还是烂尾?",
+      "url": "https://www.zhihu.com/question/2040488191787012163",
+      "source_id": "zhihu",
+      "source_name": "知乎",
+      "rank": 3,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "泡药风波下，杨梅价格大跳水，漳州龙海杨梅年产值近 10 亿元，行业该如何重塑口碑？还能放心吃吗？",
+      "url": "https://www.zhihu.com/question/2040456569758999443",
+      "source_id": "zhihu",
+      "source_name": "知乎",
+      "rank": 4,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "为什么游戏的 BOSS，都在圆形的大场子里等你？他们就不能在楼梯间、在悬崖边、在公共厕所里跟你打？",
+      "url": "https://www.zhihu.com/question/2040333578471465457",
+      "source_id": "zhihu",
+      "source_name": "知乎",
+      "rank": 5,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "桂林阳朔一米粉店本地人 7 元游客 13 元，市监局回应正在调查中，如何看待此事？你遇到过这种情况吗？",
+      "url": "https://www.zhihu.com/question/2040531882631066009",
+      "source_id": "zhihu",
+      "source_name": "知乎",
+      "rank": 6,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "景区大门越建越远，游客得换乘多次摆渡车，景区抛弃「门票经济」后，为什么总喜欢在「摆渡车」上动心思？",
+      "url": "https://www.zhihu.com/question/2037482290226401856",
+      "source_id": "zhihu",
+      "source_name": "知乎",
+      "rank": 7,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "小鹏 GX 正式上市，26.98 万起，有哪些技术亮点？预计销量如何，能否脱颖而出？",
+      "url": "https://www.zhihu.com/question/2040426374658093580",
+      "source_id": "zhihu",
+      "source_name": "知乎",
+      "rank": 8,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "一块顶级的墨在古代有多贵？真的像《家业》中一样千金难求吗？",
+      "url": "https://www.zhihu.com/question/2039665341500843447",
+      "source_id": "zhihu",
+      "source_name": "知乎",
+      "rank": 9,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "520 档期三部新片「三英战吕布」，能否撼动《给阿嬷的情书》？",
+      "url": "https://www.zhihu.com/question/2040045748025283841",
+      "source_id": "zhihu",
+      "source_name": "知乎",
+      "rank": 10,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "普京：亲爱的朋友一日不见如隔三秋",
+      "url": "https://www.toutiao.com/trending/7641234448008347690/",
+      "source_id": "toutiao",
+      "source_name": "今日头条",
+      "rank": 1,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "李在明称以色列总理已被列为战犯",
+      "url": "https://www.toutiao.com/trending/7641969712338865700/",
+      "source_id": "toutiao",
+      "source_name": "今日头条",
+      "rank": 2,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "何为“小满”",
+      "url": "https://www.toutiao.com/trending/7641800175828271113/",
+      "source_id": "toutiao",
+      "source_name": "今日头条",
+      "rank": 3,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "普京上飞机前依依不舍久久交谈",
+      "url": "https://www.toutiao.com/trending/7642110653246770715/",
+      "source_id": "toutiao",
+      "source_name": "今日头条",
+      "rank": 4,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "男子身体不适坐路边摇椅安详去世",
+      "url": "https://www.toutiao.com/trending/7641150513920196651/",
+      "source_id": "toutiao",
+      "source_name": "今日头条",
+      "rank": 5,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "北京市级机关搬迁将于2026年底完成",
+      "url": "https://www.toutiao.com/trending/7641961208891703322/",
+      "source_id": "toutiao",
+      "source_name": "今日头条",
+      "rank": 6,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "女子在博物馆看到“闺蜜”了",
+      "url": "https://www.toutiao.com/trending/7641802385412702250/",
+      "source_id": "toutiao",
+      "source_name": "今日头条",
+      "rank": 7,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "巴勒斯坦青年向以军自首 母亲拥抱",
+      "url": "https://www.toutiao.com/trending/7640953334862856234/",
+      "source_id": "toutiao",
+      "source_name": "今日头条",
+      "rank": 8,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "米粉店老板回应本地人7元游客13元",
+      "url": "https://www.toutiao.com/trending/7641733587825459209/",
+      "source_id": "toutiao",
+      "source_name": "今日头条",
+      "rank": 9,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "普京访华带了哪些企业家",
+      "url": "https://www.toutiao.com/trending/7641888608416189988/",
+      "source_id": "toutiao",
+      "source_name": "今日头条",
+      "rank": 10,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "中国敲定200架波音飞机",
+      "url": "https://tieba.baidu.com/hottopic/browse/hottopic?topic_id=28354457&amp;topic_name=%E4%B8%AD%E5%9B%BD%E6%95%B2%E5%AE%9A200%E6%9E%B6%E6%B3%A2%E9%9F%B3%E9%A3%9E%E6%9C%BA",
+      "source_id": "tieba",
+      "source_name": "贴吧",
+      "rank": 1,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "闲鱼遇神人,用豆包鉴内存真伪",
+      "url": "https://tieba.baidu.com/hottopic/browse/hottopic?topic_id=28354467&amp;topic_name=%E9%97%B2%E9%B1%BC%E9%81%87%E7%A5%9E%E4%BA%BA%2C%E7%94%A8%E8%B1%86%E5%8C%85%E9%89%B4%E5%86%85%E5%AD%98%E7%9C%9F%E4%BC%AA",
+      "source_id": "tieba",
+      "source_name": "贴吧",
+      "rank": 2,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "Fantia新规:给作品打码",
+      "url": "https://tieba.baidu.com/hottopic/browse/hottopic?topic_id=28354469&amp;topic_name=Fantia%E6%96%B0%E8%A7%84%3A%E7%BB%99%E4%BD%9C%E5%93%81%E6%89%93%E7%A0%81",
+      "source_id": "tieba",
+      "source_name": "贴吧",
+      "rank": 3,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "白金大神翻车,新书被批毒点",
+      "url": "https://tieba.baidu.com/hottopic/browse/hottopic?topic_id=28354465&amp;topic_name=%E7%99%BD%E9%87%91%E5%A4%A7%E7%A5%9E%E7%BF%BB%E8%BD%A6%2C%E6%96%B0%E4%B9%A6%E8%A2%AB%E6%89%B9%E6%AF%92%E7%82%B9",
+      "source_id": "tieba",
+      "source_name": "贴吧",
+      "rank": 4,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "官方致歉:深海迷航2确认优化",
+      "url": "https://tieba.baidu.com/hottopic/browse/hottopic?topic_id=28354471&amp;topic_name=%E5%AE%98%E6%96%B9%E8%87%B4%E6%AD%89%3A%E6%B7%B1%E6%B5%B7%E8%BF%B7%E8%88%AA2%E7%A1%AE%E8%AE%A4%E4%BC%98%E5%8C%96",
+      "source_id": "tieba",
+      "source_name": "贴吧",
+      "rank": 5,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "嫌丢人?黑袍主演缺席主创首映",
+      "url": "https://tieba.baidu.com/hottopic/browse/hottopic?topic_id=28354466&amp;topic_name=%E5%AB%8C%E4%B8%A2%E4%BA%BA%3F%E9%BB%91%E8%A2%8D%E4%B8%BB%E6%BC%94%E7%BC%BA%E5%B8%AD%E4%B8%BB%E5%88%9B%E9%A6%96%E6%98%A0",
+      "source_id": "tieba",
+      "source_name": "贴吧",
+      "rank": 6,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "娜美寿司开怼银行神操作",
+      "url": "https://tieba.baidu.com/hottopic/browse/hottopic?topic_id=28354470&amp;topic_name=%E5%A8%9C%E7%BE%8E%E5%AF%BF%E5%8F%B8%E5%BC%80%E6%80%BC%E9%93%B6%E8%A1%8C%E7%A5%9E%E6%93%8D%E4%BD%9C",
+      "source_id": "tieba",
+      "source_name": "贴吧",
+      "rank": 7,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "山姆开业日,顾客偷吃大肘子",
+      "url": "https://tieba.baidu.com/hottopic/browse/hottopic?topic_id=28354459&amp;topic_name=%E5%B1%B1%E5%A7%86%E5%BC%80%E4%B8%9A%E6%97%A5%2C%E9%A1%BE%E5%AE%A2%E5%81%B7%E5%90%83%E5%A4%A7%E8%82%98%E5%AD%90",
+      "source_id": "tieba",
+      "source_name": "贴吧",
+      "rank": 8,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "19岁男孩骑摩托炸街被制裁",
+      "url": "https://tieba.baidu.com/hottopic/browse/hottopic?topic_id=28354441&amp;topic_name=19%E5%B2%81%E7%94%B7%E5%AD%A9%E9%AA%91%E6%91%A9%E6%89%98%E7%82%B8%E8%A1%97%E8%A2%AB%E5%88%B6%E8%A3%81",
+      "source_id": "tieba",
+      "source_name": "贴吧",
+      "rank": 9,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "亚运会中国代表团整体缩编",
+      "url": "https://tieba.baidu.com/hottopic/browse/hottopic?topic_id=28354440&amp;topic_name=%E4%BA%9A%E8%BF%90%E4%BC%9A%E4%B8%AD%E5%9B%BD%E4%BB%A3%E8%A1%A8%E5%9B%A2%E6%95%B4%E4%BD%93%E7%BC%A9%E7%BC%96",
+      "source_id": "tieba",
+      "source_name": "贴吧",
+      "rank": 10,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "国台办发言人就台湾地区领导人“5·20”讲话表态：充斥谎言与欺骗、敌意与对抗",
+      "url": "https://www.thepaper.cn/newsDetail_forward_33203544",
+      "source_id": "thepaper",
+      "source_name": "澎湃新闻",
+      "rank": 1,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "福建漳州通报“泡药杨梅”：已追回问题杨梅540公斤，5人被刑拘",
+      "url": "https://www.thepaper.cn/newsDetail_forward_33204245",
+      "source_id": "thepaper",
+      "source_name": "澎湃新闻",
+      "rank": 2,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "铁路部门回应“3岁女童高铁座位与母亲相隔8节车厢”：持续优化相关功能，提升用户体验",
+      "url": "https://www.thepaper.cn/newsDetail_forward_33204168",
+      "source_id": "thepaper",
+      "source_name": "澎湃新闻",
+      "rank": 3,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "澎湃回声｜广州荔湾区最新回应：黄三、李四可对应真实、合法的权利人",
+      "url": "https://www.thepaper.cn/newsDetail_forward_33203239",
+      "source_id": "thepaper",
+      "source_name": "澎湃新闻",
+      "rank": 4,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "不交论文交作品！华东师大36名学生凭文学创作获硕士学位",
+      "url": "https://www.thepaper.cn/newsDetail_forward_33203538",
+      "source_id": "thepaper",
+      "source_name": "澎湃新闻",
+      "rank": 5,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "马上看｜洪洞大槐树景区回应澎湃曝光：全面复盘并立行立改",
+      "url": "https://www.thepaper.cn/newsDetail_forward_33203735",
+      "source_id": "thepaper",
+      "source_name": "澎湃新闻",
+      "rank": 6,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "视频丨普京对习近平说：亲爱的朋友，一日不见，如隔三秋",
+      "url": "https://www.thepaper.cn/newsDetail_forward_33203797",
+      "source_id": "thepaper",
+      "source_name": "澎湃新闻",
+      "rank": 7,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "漳州果农称部分“泡药杨梅”殃及农户导致滞销，记者实测平台销售情况",
+      "url": "https://www.thepaper.cn/newsDetail_forward_33203337",
+      "source_id": "thepaper",
+      "source_name": "澎湃新闻",
+      "rank": 8,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "3729对，上海“520”结婚登记数创9年新高",
+      "url": "https://www.thepaper.cn/newsDetail_forward_33204192",
+      "source_id": "thepaper",
+      "source_name": "澎湃新闻",
+      "rank": 9,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "图忆｜三峡大坝主体工程建成20周年影像志",
+      "url": "https://www.thepaper.cn/newsDetail_forward_33101837",
+      "source_id": "thepaper",
+      "source_name": "澎湃新闻",
+      "rank": 10,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "【早报】美股科技巨头全线走高；英伟达财报出炉、SpaceX启动IPO",
+      "url": "https://www.cls.cn/detail/2377339",
+      "source_id": "cls-hot",
+      "source_name": "财联社热门",
+      "rank": 1,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "全面超预期！英伟达公布强劲财报 预计下半年开始发货Vera Rubin",
+      "url": "https://www.cls.cn/detail/2377323",
+      "source_id": "cls-hot",
+      "source_name": "财联社热门",
+      "rank": 2,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "美股收盘：三大指数均涨超1% 光通信、CPU概念表现强势",
+      "url": "https://www.cls.cn/detail/2377305",
+      "source_id": "cls-hot",
+      "source_name": "财联社热门",
+      "rank": 3,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "全球最快！12.8T光模块亮相光博会 产业链预研加速 光通信圈热议“超级周期”",
+      "url": "https://www.cls.cn/detail/2377226",
+      "source_id": "cls-hot",
+      "source_name": "财联社热门",
+      "rank": 4,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "三星电子工会暂停罢工计划 与资方达成初步薪资协议",
+      "url": "https://www.cls.cn/detail/2377209",
+      "source_id": "cls-hot",
+      "source_name": "财联社热门",
+      "rank": 5,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "全球芯片LOF玩心跳，连跌4天后大反弹，风险提示也难刹车？",
+      "url": "https://www.cls.cn/detail/2377382",
+      "source_id": "cls-hot",
+      "source_name": "财联社热门",
+      "rank": 6,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "SpaceX递交IPO文件冲刺纳斯达克 更多财务和技术细节曝光",
+      "url": "https://www.cls.cn/detail/2377327",
+      "source_id": "cls-hot",
+      "source_name": "财联社热门",
+      "rank": 7,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "5月21日投资避雷针：4连板人气股公告 不涉及液冷及机器人相关元器件的生产",
+      "url": "https://www.cls.cn/detail/2377385",
+      "source_id": "cls-hot",
+      "source_name": "财联社热门",
+      "rank": 8,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "粮农组织警告：霍尔木兹海峡问题或引发严重的全球粮食价格危机",
+      "url": "https://www.cls.cn/detail/2377135",
+      "source_id": "cls-hot",
+      "source_name": "财联社热门",
+      "rank": 9,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "油价走软、海外股市债市携手回暖 英伟达即将发布财报 | 今夜看点",
+      "url": "https://www.cls.cn/detail/2377104",
+      "source_id": "cls-hot",
+      "source_name": "财联社热门",
+      "rank": 10,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "特朗普回应中俄元首会晤",
+      "url": "https://news.ifeng.com/c/8tIjMNQDlpG",
+      "source_id": "ifeng",
+      "source_name": "凤凰网",
+      "rank": 1,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "布林肯又提“实力”但承认：一对一竞争，我们可能输中国",
+      "url": "https://news.ifeng.com/c/8tI0z13FGHn",
+      "source_id": "ifeng",
+      "source_name": "凤凰网",
+      "rank": 2,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "美国起诉劳尔·卡斯特罗，古巴外长斥“非法闹剧”",
+      "url": "https://news.ifeng.com/c/8tIYvnaN0gz",
+      "source_id": "ifeng",
+      "source_name": "凤凰网",
+      "rank": 3,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "美国起诉94岁古巴前领导人卡斯特罗，意在重演委内瑞拉剧本？",
+      "url": "https://news.ifeng.com/c/8tIfRlPOaZk",
+      "source_id": "ifeng",
+      "source_name": "凤凰网",
+      "rank": 4,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "特朗普，“退了一万亿”",
+      "url": "https://news.ifeng.com/c/8tIcotw8V5W",
+      "source_id": "ifeng",
+      "source_name": "凤凰网",
+      "rank": 5,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "意大利、法国、爱尔兰、希腊发声，谴责以色列高官",
+      "url": "https://news.ifeng.com/c/8tIddmbAvup",
+      "source_id": "ifeng",
+      "source_name": "凤凰网",
+      "rank": 6,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "特朗普：不要中国学生，那可太冒犯了",
+      "url": "https://news.ifeng.com/c/8tIjMNQDlri",
+      "source_id": "ifeng",
+      "source_name": "凤凰网",
+      "rank": 7,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "三星电子劳资谈判结束，工会决定暂缓罢工",
+      "url": "https://news.ifeng.com/c/8tHz9ixVFPp",
+      "source_id": "ifeng",
+      "source_name": "凤凰网",
+      "rank": 8,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "郑丽文：特朗普叫台湾不要再讲“台独”，民进党还装听不懂",
+      "url": "https://news.ifeng.com/c/8tHcSaikz2t",
+      "source_id": "ifeng",
+      "source_name": "凤凰网",
+      "rank": 9,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "合影时高市早苗一把拿过李在明的眼镜，戴在自己脸上",
+      "url": "https://v.ifeng.com/c/8tHzFpyp3nW",
+      "source_id": "ifeng",
+      "source_name": "凤凰网",
+      "rank": 10,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "美伊冲突降温，WTI原油大跌5.5%，美股全线收涨，美债收益率下跌，英伟达绩后下跌",
+      "url": "https://wallstreetcn.com/articles/3772708",
+      "source_id": "wallstreetcn-hot",
+      "source_name": "华尔街见闻",
+      "rank": 1,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "英伟达Q1营收超预期增85%、指引再新高仍不够亮眼，新增回购800亿且大幅上调股息 | 财报见闻",
+      "url": "https://wallstreetcn.com/articles/3772760",
+      "source_id": "wallstreetcn-hot",
+      "source_name": "华尔街见闻",
+      "rank": 2,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "华尔街见闻早餐FM-Radio | 2026年5月21日",
+      "url": "https://wallstreetcn.com/articles/3772762",
+      "source_id": "wallstreetcn-hot",
+      "source_name": "华尔街见闻",
+      "rank": 3,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "对等降税、稀土松绑、波音订单……商务部解读中美经贸磋商成果",
+      "url": "https://wallstreetcn.com/articles/3772691",
+      "source_id": "wallstreetcn-hot",
+      "source_name": "华尔街见闻",
+      "rank": 4,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "特朗普一句话击穿油市！布油盘中跌超7%，美国库存创纪录暴跌也挡不住",
+      "url": "https://wallstreetcn.com/articles/3772754",
+      "source_id": "wallstreetcn-hot",
+      "source_name": "华尔街见闻",
+      "rank": 5,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "美联储会议纪要放鹰：多数官员支持通胀持续高企时加息，多人倾向删除宽松倾向",
+      "url": "https://wallstreetcn.com/articles/3772756",
+      "source_id": "wallstreetcn-hot",
+      "source_name": "华尔街见闻",
+      "rank": 6,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "英伟达电话会：需求在加速，Vera Rubin全周期供应受限，独立CPU业务解锁2000亿美元市场",
+      "url": "https://wallstreetcn.com/articles/3772763",
+      "source_id": "wallstreetcn-hot",
+      "source_name": "华尔街见闻",
+      "rank": 7,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "2007年幽灵重现？债市拉响警报：廉价资金时代或走向终结！",
+      "url": "https://wallstreetcn.com/articles/3772700",
+      "source_id": "wallstreetcn-hot",
+      "source_name": "华尔街见闻",
+      "rank": 8,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "霍尔木兹+厄尔尼诺双杀，花旗警告：大宗商品恐爆发超级通胀风暴！",
+      "url": "https://wallstreetcn.com/articles/3772710",
+      "source_id": "wallstreetcn-hot",
+      "source_name": "华尔街见闻",
+      "rank": 9,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "SpaceX招股书揭秘：巨亏49亿、马斯克掌控85%投票权",
+      "url": "https://wallstreetcn.com/articles/3772765",
+      "source_id": "wallstreetcn-hot",
+      "source_name": "华尔街见闻",
+      "rank": 10,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "Omdia：倍思2026年一季度OWS耳夹耳机出货量全球第二，非手机厂商第一",
+      "url": "https://www.36kr.com/newsflashes/3818473738077319",
+      "source_id": "36kr",
+      "source_name": "36氪",
+      "rank": 1,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "俄罗斯总统普京结束访华",
+      "url": "https://search.bilibili.com/all?keyword=%E4%BF%84%E7%BD%97%E6%96%AF%E6%80%BB%E7%BB%9F%E6%99%AE%E4%BA%AC%E7%BB%93%E6%9D%9F%E8%AE%BF%E5%8D%8E",
+      "source_id": "bilibili-hot-search",
+      "source_name": "bilibili 热搜",
+      "rank": 1,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "京东方A",
+      "url": "https://xueqiu.com/s/SZ000725",
+      "source_id": "xueqiu",
+      "source_name": "雪球",
+      "rank": 1,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "机构：速卖通居韩国市场跨境电商平台首位",
+      "url": "https://www.36kr.com/newsflashes/3818472758953097",
+      "source_id": "36kr",
+      "source_name": "36氪",
+      "rank": 2,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "超级英雄祖国人的一生",
+      "url": "https://search.bilibili.com/all?keyword=%E8%B6%85%E7%BA%A7%E8%8B%B1%E9%9B%84%E7%A5%96%E5%9B%BD%E4%BA%BA%E7%9A%84%E4%B8%80%E7%94%9F",
+      "source_id": "bilibili-hot-search",
+      "source_name": "bilibili 热搜",
+      "rank": 2,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "澜起科技",
+      "url": "https://xueqiu.com/s/SH688008",
+      "source_id": "xueqiu",
+      "source_name": "雪球",
+      "rank": 2,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "韩国将于7月6日起首次开启美元兑韩元现货市场24小时交易",
+      "url": "https://www.36kr.com/newsflashes/3818464914424706",
+      "source_id": "36kr",
+      "source_name": "36氪",
+      "rank": 3,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "深扒药水杨梅的化学真相",
+      "url": "https://search.bilibili.com/all?keyword=%E6%B7%B1%E6%89%92%E8%8D%AF%E6%B0%B4%E6%9D%A8%E6%A2%85%E7%9A%84%E5%8C%96%E5%AD%A6%E7%9C%9F%E7%9B%B8",
+      "source_id": "bilibili-hot-search",
+      "source_name": "bilibili 热搜",
+      "rank": 3,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "赛力斯",
+      "url": "https://xueqiu.com/s/SH601127",
+      "source_id": "xueqiu",
+      "source_name": "雪球",
+      "rank": 3,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "国家发展改革委：将完善公平竞争、投融资、促进科技创新、规范经营等方面政策举措",
+      "url": "https://www.36kr.com/newsflashes/3818459413955464",
+      "source_id": "36kr",
+      "source_name": "36氪",
+      "rank": 4,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "黑袍大结局彻底烂尾了吗",
+      "url": "https://search.bilibili.com/all?keyword=%E9%BB%91%E8%A2%8D%E5%A4%A7%E7%BB%93%E5%B1%80%E5%BD%BB%E5%BA%95%E7%83%82%E5%B0%BE%E4%BA%86%E5%90%97",
+      "source_id": "bilibili-hot-search",
+      "source_name": "bilibili 热搜",
+      "rank": 4,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "*ST闻泰",
+      "url": "https://xueqiu.com/s/SH600745",
+      "source_id": "xueqiu",
+      "source_name": "雪球",
+      "rank": 4,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "小米申请注册“XIAOMI MIMO ORBIT”“XIAOMI MIMO CLAW”商标",
+      "url": "https://www.36kr.com/newsflashes/3818454362735746",
+      "source_id": "36kr",
+      "source_name": "36氪",
+      "rank": 5,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "变相怪强",
+      "url": "https://search.bilibili.com/all?keyword=%E5%8F%98%E7%9B%B8%E6%80%AA%E5%BC%BA",
+      "source_id": "bilibili-hot-search",
+      "source_name": "bilibili 热搜",
+      "rank": 5,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "北方华创",
+      "url": "https://xueqiu.com/s/SZ002371",
+      "source_id": "xueqiu",
+      "source_name": "雪球",
+      "rank": 5,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "深圳市探海游艇产业发展有限公司在大连投资新公司",
+      "url": "https://www.36kr.com/newsflashes/3818445023151232",
+      "source_id": "36kr",
+      "source_name": "36氪",
+      "rank": 6,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "埃梅里五夺欧联杯冠军",
+      "url": "https://search.bilibili.com/all?keyword=%E5%9F%83%E6%A2%85%E9%87%8C%E4%BA%94%E5%A4%BA%E6%AC%A7%E8%81%94%E6%9D%AF%E5%86%A0%E5%86%9B",
+      "source_id": "bilibili-hot-search",
+      "source_name": "bilibili 热搜",
+      "rank": 6,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "腾讯控股",
+      "url": "https://xueqiu.com/s/00700",
+      "source_id": "xueqiu",
+      "source_name": "雪球",
+      "rank": 6,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "阿里妈妈：超100万品牌商家持续在天猫加大投入，超去年同期",
+      "url": "https://www.36kr.com/newsflashes/3818435313304707",
+      "source_id": "36kr",
+      "source_name": "36氪",
+      "rank": 7,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "骑士被翻盘谁是责任人",
+      "url": "https://search.bilibili.com/all?keyword=%E9%AA%91%E5%A3%AB%E8%A2%AB%E7%BF%BB%E7%9B%98%E8%B0%81%E6%98%AF%E8%B4%A3%E4%BB%BB%E4%BA%BA",
+      "source_id": "bilibili-hot-search",
+      "source_name": "bilibili 热搜",
+      "rank": 7,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "兆易创新",
+      "url": "https://xueqiu.com/s/SH603986",
+      "source_id": "xueqiu",
+      "source_name": "雪球",
+      "rank": 7,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "日本据称正考虑提出约3万亿日元的补充预算案",
+      "url": "https://www.36kr.com/newsflashes/3818427109786761",
+      "source_id": "36kr",
+      "source_name": "36氪",
+      "rank": 8,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "阿斯顿维拉夺得欧联杯冠军",
+      "url": "https://search.bilibili.com/all?keyword=%E9%98%BF%E6%96%AF%E9%A1%BF%E7%BB%B4%E6%8B%89%E5%A4%BA%E5%BE%97%E6%AC%A7%E8%81%94%E6%9D%AF%E5%86%A0%E5%86%9B",
+      "source_id": "bilibili-hot-search",
+      "source_name": "bilibili 热搜",
+      "rank": 8,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "长电科技",
+      "url": "https://xueqiu.com/s/SH600584",
+      "source_id": "xueqiu",
+      "source_name": "雪球",
+      "rank": 8,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "摩根大通投行高管：香港及中国内地IPO活动料显著增加",
+      "url": "https://www.36kr.com/newsflashes/3818424667260032",
+      "source_id": "36kr",
+      "source_name": "36氪",
+      "rank": 9,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "普京访华同款国宴吃什么",
+      "url": "https://search.bilibili.com/all?keyword=%E6%99%AE%E4%BA%AC%E8%AE%BF%E5%8D%8E%E5%90%8C%E6%AC%BE%E5%9B%BD%E5%AE%B4%E5%90%83%E4%BB%80%E4%B9%88",
+      "source_id": "bilibili-hot-search",
+      "source_name": "bilibili 热搜",
+      "rank": 9,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "华灿光电",
+      "url": "https://xueqiu.com/s/SZ300323",
+      "source_id": "xueqiu",
+      "source_name": "雪球",
+      "rank": 9,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "今年4月中国企业信用指数为162.41，持续保持向好态势",
+      "url": "https://www.36kr.com/newsflashes/3818416305193861",
+      "source_id": "36kr",
+      "source_name": "36氪",
+      "rank": 10,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "全球疯抢尿素中国为何不慌",
+      "url": "https://search.bilibili.com/all?keyword=%E5%85%A8%E7%90%83%E7%96%AF%E6%8A%A2%E5%B0%BF%E7%B4%A0%E4%B8%AD%E5%9B%BD%E4%B8%BA%E4%BD%95%E4%B8%8D%E6%85%8C",
+      "source_id": "bilibili-hot-search",
+      "source_name": "bilibili 热搜",
+      "rank": 10,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    },
+    {
+      "title": "紫金矿业",
+      "url": "https://xueqiu.com/s/SH601899",
+      "source_id": "xueqiu",
+      "source_name": "雪球",
+      "rank": 10,
+      "hot_value": 0,
+      "trend": "stable",
+      "days_on_list": 1
+    }
+  ]
+}

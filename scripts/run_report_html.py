@@ -78,6 +78,7 @@ def main() -> None:
                             continue
                         
                         print("\n生成成功！")
+                        print("（数据分析板块：情感三维饼图 + 细粒度情绪饼图 + 时间线）")
                         print("\n结果详情:")
                         print(json.dumps(parsed, ensure_ascii=False, indent=2))
                         

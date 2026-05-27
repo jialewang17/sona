@@ -19,6 +19,13 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langgraph.graph import StateGraph, END
 
+from utils.hot_event_clusters import (
+    DOMAIN_ORDER as HOT_DOMAIN_ORDER,
+    cluster_news_by_domain,
+    parse_llm_cluster_domain_json,
+    rebuild_stats_with_domains,
+)
+
 
 def load_env_file(env_path: Optional[str] = None) -> None:
     candidate_paths = []
@@ -67,90 +74,13 @@ def load_env_file(env_path: Optional[str] = None) -> None:
 
 
 def apply_env_aliases() -> None:
-    # DashScope Qwen-codingplan (OpenAI-compatible) alias support.
-    # 优先使用 CODINGPLAN 兼容配置
-    codingplan_api_key = os.environ.get("CODINGPLAN_API_KEY") or os.environ.get("APIKEY")
-    codingplan_base_url = os.environ.get("CODINGPLAN_BASE_URL") or os.environ.get("baseurl")
-    codingplan_model_name = (
-        os.environ.get("CODINGPLAN_MODEL_NAME")
-        or os.environ.get("CODINGPLAN_MODEL")
-        or "qwen-codingplan"
-    )
+    """将 Sona .env / model.yaml 映射为 hottopics 所需的 INSIGHT_/QUERY_ 变量（通义走 compatible-mode）。"""
+    try:
+        from utils.hot_topics_env import prepare_hot_topics_environment
 
-    # Normalize Coding Plan defaults
-    codingplan_base_url_explicit = bool(os.environ.get("CODINGPLAN_BASE_URL") or os.environ.get("baseurl"))
-    codingplan_model_explicit = bool(os.environ.get("CODINGPLAN_MODEL_NAME") or os.environ.get("CODINGPLAN_MODEL"))
-
-    if codingplan_base_url and (not codingplan_base_url_explicit):
-        if "coding.dashscope.aliyuncs.com" in codingplan_base_url and "coding-intl" not in codingplan_base_url:
-            codingplan_base_url = codingplan_base_url.replace(
-                "coding.dashscope.aliyuncs.com",
-                "coding-intl.dashscope.aliyuncs.com",
-            )
-
-    if not codingplan_model_explicit and codingplan_model_name == "qwen-codingplan":
-        codingplan_model_name = os.environ.get("CODINGPLAN_DEFAULT_MODEL_NAME") or "qwen3.5-plus"
-
-    if codingplan_api_key:
-        if "INSIGHT_ENGINE_API_KEY" not in os.environ:
-            os.environ["INSIGHT_ENGINE_API_KEY"] = codingplan_api_key
-        if "REPORT_ENGINE_API_KEY" not in os.environ:
-            os.environ["REPORT_ENGINE_API_KEY"] = codingplan_api_key
-        if "QUERY_ENGINE_API_KEY" not in os.environ:
-            os.environ["QUERY_ENGINE_API_KEY"] = codingplan_api_key
-        if "OPENAI_API_KEY" not in os.environ:
-            os.environ["OPENAI_API_KEY"] = codingplan_api_key
-
-    if codingplan_base_url:
-        if "INSIGHT_ENGINE_BASE_URL" not in os.environ:
-            os.environ["INSIGHT_ENGINE_BASE_URL"] = codingplan_base_url
-        if "REPORT_ENGINE_BASE_URL" not in os.environ:
-            os.environ["REPORT_ENGINE_BASE_URL"] = codingplan_base_url
-        if "QUERY_ENGINE_BASE_URL" not in os.environ:
-            os.environ["QUERY_ENGINE_BASE_URL"] = codingplan_base_url
-        if "OPENAI_BASE_URL" not in os.environ:
-            os.environ["OPENAI_BASE_URL"] = codingplan_base_url
-
-    if "INSIGHT_ENGINE_MODEL_NAME" not in os.environ:
-        os.environ["INSIGHT_ENGINE_MODEL_NAME"] = codingplan_model_name
-    if "REPORT_ENGINE_MODEL_NAME" not in os.environ:
-        os.environ["REPORT_ENGINE_MODEL_NAME"] = codingplan_model_name
-    if "QUERY_ENGINE_MODEL_NAME" not in os.environ:
-        os.environ["QUERY_ENGINE_MODEL_NAME"] = codingplan_model_name
-
-    # 与 Sona .env 对齐：KIMI_APIKEY（无下划线）与 KIMI_API_KEY 均可
-    _kimi_key = os.environ.get("KIMI_API_KEY") or os.environ.get("KIMI_APIKEY")
-    if "INSIGHT_ENGINE_API_KEY" not in os.environ and _kimi_key:
-        os.environ["INSIGHT_ENGINE_API_KEY"] = _kimi_key
-    if "REPORT_ENGINE_API_KEY" not in os.environ and _kimi_key:
-        os.environ["REPORT_ENGINE_API_KEY"] = _kimi_key
-    if "QUERY_ENGINE_API_KEY" not in os.environ and _kimi_key:
-        os.environ["QUERY_ENGINE_API_KEY"] = _kimi_key
-    if "OPENAI_API_KEY" not in os.environ and _kimi_key:
-        os.environ["OPENAI_API_KEY"] = _kimi_key
-    if "INSIGHT_ENGINE_BASE_URL" not in os.environ and os.environ.get("KIMI_BASE_URL"):
-        os.environ["INSIGHT_ENGINE_BASE_URL"] = os.environ["KIMI_BASE_URL"]
-    if "REPORT_ENGINE_BASE_URL" not in os.environ and os.environ.get("KIMI_BASE_URL"):
-        os.environ["REPORT_ENGINE_BASE_URL"] = os.environ["KIMI_BASE_URL"]
-    if "QUERY_ENGINE_BASE_URL" not in os.environ and os.environ.get("KIMI_BASE_URL"):
-        os.environ["QUERY_ENGINE_BASE_URL"] = os.environ["KIMI_BASE_URL"]
-    if "OPENAI_BASE_URL" not in os.environ and os.environ.get("KIMI_BASE_URL"):
-        os.environ["OPENAI_BASE_URL"] = os.environ["KIMI_BASE_URL"]
-    if "INSIGHT_ENGINE_MODEL_NAME" not in os.environ:
-        if os.environ.get("KIMI_MODEL_NAME"):
-            os.environ["INSIGHT_ENGINE_MODEL_NAME"] = os.environ["KIMI_MODEL_NAME"]
-        elif os.environ.get("KIMI_MODEL"):
-            os.environ["INSIGHT_ENGINE_MODEL_NAME"] = os.environ["KIMI_MODEL"]
-    if "REPORT_ENGINE_MODEL_NAME" not in os.environ:
-        if os.environ.get("KIMI_MODEL_NAME"):
-            os.environ["REPORT_ENGINE_MODEL_NAME"] = os.environ["KIMI_MODEL_NAME"]
-        elif os.environ.get("KIMI_MODEL"):
-            os.environ["REPORT_ENGINE_MODEL_NAME"] = os.environ["KIMI_MODEL"]
-    if "QUERY_ENGINE_MODEL_NAME" not in os.environ:
-        if os.environ.get("KIMI_MODEL_NAME"):
-            os.environ["QUERY_ENGINE_MODEL_NAME"] = os.environ["KIMI_MODEL_NAME"]
-        elif os.environ.get("KIMI_MODEL"):
-            os.environ["QUERY_ENGINE_MODEL_NAME"] = os.environ["KIMI_MODEL"]
+        prepare_hot_topics_environment()
+    except Exception:
+        pass
 
 
 load_env_file()
@@ -173,6 +103,9 @@ def load_config():
 
 
 CONFIG = load_config()
+
+# run() 写入 docs/case candidate 快照后，供 CLI 等读取展示路径
+LAST_HOT_SNAPSHOT_JSON: Optional[str] = None
 
 
 # === 基础工具函数 ===
@@ -408,6 +341,141 @@ def html_escape(text: str) -> str:
     )
 
 
+def _build_domain_cluster_section(domain_cluster_stats: Optional[Dict[str, Any]]) -> str:
+    """生成「事件聚类与领域」HTML 片段。"""
+    if not domain_cluster_stats:
+        return ""
+    domain_order = domain_cluster_stats.get("domain_order") or []
+    cbd = domain_cluster_stats.get("clusters_by_domain") or {}
+    if not any((cbd.get(d) or []) for d in domain_order):
+        return ""
+    parts: List[str] = [
+        '            <div class="section">\n',
+        '                <div class="section-title">事件聚类与领域</div>\n',
+        '                <div class="section-body domain-cluster-intro">'
+        "基于抓取标题的相似度合并为事件簇，并按主题领域做关键词标注"
+        "（与下方「热点事件」的舆情类型为不同维度）。</div>\n",
+    ]
+    for domain in domain_order:
+        clusters = cbd.get(domain) or []
+        if not clusters:
+            continue
+        parts.append(
+            f'            <div class="topic-category">{html_escape(domain)}'
+            f' <span class="domain-cluster-count">（{len(clusters)} 簇）</span></div>\n'
+        )
+        for cl in clusters:
+            rep = html_escape(str(cl.get("representative_title") or ""))
+            size = int(cl.get("size") or 0)
+            max_hot = cl.get("max_hot")
+            try:
+                hot_s = f"{float(max_hot):.0f}"
+            except (TypeError, ValueError):
+                hot_s = "—"
+            sids_raw = cl.get("source_ids") or []
+            sids = ", ".join(html_escape(str(x)) for x in sids_raw[:10])
+            samples = [s for s in (cl.get("sample_titles") or []) if s][:4]
+            samples_html = "".join(
+                f'                <div class="cluster-sample">· {html_escape(str(s))}</div>\n' for s in samples
+            )
+            parts.append(
+                "            <div class=\"cluster-card\">\n"
+                f'                <div class="cluster-rep"><span class="domain-badge">{html_escape(domain)}</span> {rep}</div>\n'
+                f'                <div class="cluster-meta">{size} 条 · 峰值热度 {hot_s} · 平台: {sids or "—"}</div>\n'
+                f'                <div class="cluster-samples">{samples_html}</div>\n'
+                "            </div>\n"
+            )
+    parts.append("            </div>\n")
+    return "".join(parts)
+
+
+def format_forum_discussion_html(raw: str) -> str:
+    """
+    将 ForumNode 输出的「重大事件剖析」拆成模块化卡片（Insight / Media / Query / 综合判断）。
+    若无法识别小节标题，则回退为整块转义展示。
+    """
+    text = (raw or "").strip()
+    if not text:
+        return '<p class="forum-empty">暂无重大事件剖析。</p>'
+
+    if text.startswith("【重大事件剖析】"):
+        text = re.sub(r"^【重大事件剖析】\s*", "", text, count=1).lstrip("：:").strip()
+
+    _MARKERS: List[Tuple[str, str, re.Pattern[str]]] = [
+        ("insight", "Insight · 深度观察", re.compile(r"【\s*Insight\s*深度观察\s*】")),
+        ("media", "Media · 媒体观点", re.compile(r"【\s*Media\s*媒体观点\s*】")),
+        ("query", "Query · 关键事实", re.compile(r"【\s*Query\s*关键事实\s*】")),
+        ("judgment", "综合判断", re.compile(r"(?:^|\n)\s*综合判断\s*[:：]?\s*")),
+    ]
+
+    def _next_match(from_pos: int) -> Optional[Tuple[int, int, str, str]]:
+        best: Optional[Tuple[int, int, str, str]] = None
+        for kind, title, cre in _MARKERS:
+            m = cre.search(text, from_pos)
+            if not m:
+                continue
+            if best is None or m.start() < best[0]:
+                best = (m.start(), m.end(), kind, title)
+        return best
+
+    pos = 0
+    preamble = ""
+    first = _next_match(0)
+    if first and first[0] > 0:
+        preamble = text[: first[0]].strip()
+
+    segments: List[Tuple[str, str, str]] = []
+    while pos < len(text):
+        cur = _next_match(pos)
+        if not cur:
+            break
+        start, end, kind, title = cur
+        nxt = _next_match(end)
+        body_end = nxt[0] if nxt else len(text)
+        body = text[end:body_end].strip()
+        if body:
+            segments.append((kind, title, body))
+        pos = body_end
+
+    if len(segments) < 1:
+        return f'<div class="forum-legacy">{html_escape(text).replace(chr(10), "<br/>")}</div>'
+
+    def _body_html(body: str) -> str:
+        paras = [p.strip() for p in re.split(r"\n\s*\n+", body) if p.strip()]
+        if not paras:
+            return ""
+        blocks: List[str] = []
+        for p in paras:
+            inner = html_escape(p).replace("\n", "<br/>")
+            blocks.append(f'<p class="forum-mod-para">{inner}</p>')
+        return "\n".join(blocks)
+
+    cards: List[str] = ['<div class="forum-modules">\n']
+    if preamble and len(preamble) > 8:
+        cards.append(
+            '            <div class="forum-mod forum-mod-preamble">\n'
+            '                <header class="forum-mod-head"><span class="forum-mod-kicker">导读</span></header>\n'
+            '                <div class="forum-mod-content">'
+            + html_escape(preamble).replace("\n", "<br/>")
+            + "</div>\n            </div>\n"
+        )
+    for kind, title, body in segments:
+        body_html = _body_html(body)
+        if not body_html:
+            continue
+        cards.append(
+            f'            <article class="forum-mod forum-mod-{kind}">\n'
+            f'                <header class="forum-mod-head">\n'
+            f'                    <span class="forum-mod-kicker">{html_escape(title)}</span>\n'
+            f"                </header>\n"
+            f'                <div class="forum-mod-content">\n{body_html}\n'
+            f"                </div>\n"
+            f"            </article>\n"
+        )
+    cards.append("            </div>")
+    return "".join(cards)
+
+
 def _is_docker_env() -> bool:
     """检测是否在 Docker 容器内运行（容器内不自动打开浏览器）"""
     if os.environ.get("DOCKER_CONTAINER") == "true":
@@ -457,6 +525,8 @@ class TrendState(TypedDict):
     analysis_result: Dict[str, Any]
     # 十一类舆情分类统计结果
     classification_stats: Dict[str, Any]
+    # 抓取条目：相似度聚类 + 主题领域（与舆情十一类正交）
+    domain_cluster_stats: Dict[str, Any]
     # 论坛讨论内容
     forum_discussion: str
     # 最终HTML报告
@@ -907,6 +977,76 @@ class NormalizeNewsNode:
         return {"news_data": {"news_list": normalized_items, "raw_items": []}, "raw_items": []}
 
 
+def _hot_domain_llm_enabled() -> bool:
+    """默认开启批量 LLM 领域标注；设 HOT_DOMAIN_USE_LLM=0 可关闭。需 INSIGHT_ENGINE_API_KEY。"""
+    v = os.environ.get("HOT_DOMAIN_USE_LLM", "1").strip().lower()
+    if v in ("0", "false", "no", "off"):
+        return False
+    return bool(os.environ.get("INSIGHT_ENGINE_API_KEY"))
+
+
+def _batch_llm_cluster_domains(flat_clusters: List[Dict[str, Any]], domain_order: List[str]) -> Dict[str, str]:
+    """将各簇代表标题一次性交给与 Insight 相同的 OpenAI 兼容端点，返回 cluster_id -> 领域。"""
+    if not flat_clusters:
+        return {}
+    api_key = os.environ.get("INSIGHT_ENGINE_API_KEY")
+    if not api_key:
+        return {}
+    base_url = os.environ.get("INSIGHT_ENGINE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
+    model = os.environ.get("INSIGHT_ENGINE_MODEL_NAME", "qwen-plus")
+    lines = "\n".join(
+            f'{r.get("cluster_id")}\t{str(r.get("representative_title") or "").strip()}'
+            for r in flat_clusters
+        )
+    allowed = "\n".join(f"- {d}" for d in domain_order)
+    system_prompt = (
+        "你是中文新闻「主题领域」分类器。用户给出若干事件簇的代表标题，请为每个 cluster_id 从允许列表中"
+        "选且仅能选一个领域标签。标签必须与列表中的原文完全一致（含标点、不得改写或缩写）。"
+        "只输出一个 JSON 对象，键为 cluster_id（如 c0），值为领域名称。不要 Markdown 代码围栏，不要解释。"
+    )
+    user_prompt = f"允许的领域名称（必须完全一致）：\n{allowed}\n\n每行一个簇，格式为：cluster_id<TAB>代表标题\n{lines}"
+    try:
+        llm = ChatOpenAI(
+            api_key=api_key,
+            base_url=base_url,
+            model=model,
+            temperature=0.0,
+            timeout=120,
+        )
+        resp = llm.invoke([SystemMessage(content=system_prompt), HumanMessage(content=user_prompt)])
+        raw = getattr(resp, "content", None) or str(resp)
+        valid = frozenset(domain_order)
+        return parse_llm_cluster_domain_json(str(raw), valid)
+    except Exception as e:
+        print(f"⚠️  LLM 领域分类失败（沿用关键词）: {e}")
+        return {}
+
+
+class ClusterDomainNode:
+    """对 normalize 后的全量新闻做标题相似度聚类，并按主题领域打标签。"""
+
+    def __init__(self) -> None:
+        pass
+
+    def __call__(self, state: TrendState) -> TrendState:
+        print("--- [ClusterDomainNode] 事件聚类与领域分类 ---")
+        news_list = state.get("news_data", {}).get("news_list") or []
+        stats = cluster_news_by_domain(news_list)
+        n = int(stats.get("meta", {}).get("cluster_count") or 0)
+        print(f"✅ 聚类完成，共 {n} 个事件簇")
+
+        order = list(stats.get("domain_order") or HOT_DOMAIN_ORDER)
+        if _hot_domain_llm_enabled():
+            mapping = _batch_llm_cluster_domains(stats.get("flat_clusters") or [], order)
+            if mapping:
+                stats = rebuild_stats_with_domains(stats, mapping, method="llm_batch")
+                print(f"✅ LLM 已标注 {len(mapping)} 个簇的领域（{stats.get('meta', {}).get('domain_method')}）")
+            else:
+                meta = stats.setdefault("meta", {})
+                meta["domain_method"] = meta.get("domain_method") or "keyword"
+        return {"domain_cluster_stats": stats}
+
+
 class StartFetchNode:
     """开始抓取的入口节点"""
 
@@ -952,139 +1092,6 @@ class InsightNode:
             self.llm = None
 
     @staticmethod
-    def _calculate_risk_level(heat_score: float, sentiment: str, category: str) -> Tuple[str, float, str, List[str]]:
-        """根据热度、情感和类别计算热点风险等级。"""
-        risk_score = 0.0
-        risk_factors: List[str] = []
-
-        if heat_score >= 80:
-            risk_score += 40
-            risk_factors.append("高热度传播")
-        elif heat_score >= 60:
-            risk_score += 30
-            risk_factors.append("中高热度传播")
-        elif heat_score >= 40:
-            risk_score += 20
-            risk_factors.append("中等热度传播")
-        elif heat_score >= 20:
-            risk_score += 10
-            risk_factors.append("低热度传播")
-
-        if sentiment == "负面":
-            risk_score += 35
-            risk_factors.append("负面情绪主导")
-        elif sentiment == "中性":
-            risk_score += 15
-            risk_factors.append("情绪尚未明确分化")
-        elif sentiment == "正面":
-            risk_factors.append("正面情绪占优")
-
-        sensitive_categories = {"突发事件舆论", "法治类舆论", "治理类舆论"}
-        if category in sensitive_categories:
-            risk_score += 25
-            risk_factors.append("敏感舆情类别")
-        elif category in {"经济类舆论", "民生类舆论"}:
-            risk_score += 15
-            risk_factors.append("重点民生经济议题")
-
-        if risk_score >= 80:
-            return "重大风险", risk_score, "需立即启动应急预案", risk_factors
-        if risk_score >= 60:
-            return "高风险", risk_score, "需重点监控，准备回应方案", risk_factors
-        if risk_score >= 35:
-            return "中风险", risk_score, "需持续跟踪，适时回应", risk_factors
-        return "低风险", risk_score, "常规监控即可", risk_factors
-
-    @staticmethod
-    def _topic_signature(title: str) -> str:
-        normalized = re.sub(r"\s+", "", str(title or ""))[:40]
-        if not normalized:
-            return "unknown"
-        import hashlib
-
-        return hashlib.md5(normalized.encode("utf-8")).hexdigest()[:8]
-
-    @classmethod
-    def _enrich_hot_topics(cls, top_topics: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        enriched: List[Dict[str, Any]] = []
-        for topic in top_topics or []:
-            if not isinstance(topic, dict):
-                continue
-            title = str(topic.get("topic") or topic.get("title") or "").strip()
-            if not title:
-                continue
-            sentiment = str(topic.get("sentiment") or "中性").strip()
-            category = str(topic.get("category") or "其他").strip()
-            try:
-                heat_score = float(topic.get("heat_score") or 0)
-            except (TypeError, ValueError):
-                heat_score = 0.0
-
-            risk_level, risk_score, risk_note, risk_factors = cls._calculate_risk_level(
-                heat_score, sentiment, category
-            )
-            item = dict(topic)
-            item.update(
-                {
-                    "topic": title,
-                    "sentiment": sentiment,
-                    "category": category,
-                    "heat_score": round(heat_score, 1),
-                    "risk_level": risk_level,
-                    "risk_score": round(risk_score, 1),
-                    "risk_note": risk_note,
-                    "risk_factors": risk_factors,
-                    "cluster_id": f"{category}_{cls._topic_signature(title)}",
-                    "deep_dive_url": f"/event?query={quote(title)}",
-                    "deep_dive_command": f"/event {title}",
-                    "case_candidate": risk_score >= 60,
-                }
-            )
-            enriched.append(item)
-        return enriched
-
-    @classmethod
-    def _build_situation_summary(cls, top_topics: List[Dict[str, Any]]) -> Dict[str, Any]:
-        levels = [str(t.get("risk_level") or "低风险") for t in top_topics if isinstance(t, dict)]
-        major_count = levels.count("重大风险")
-        high_count = levels.count("高风险")
-        medium_count = levels.count("中风险")
-        low_count = levels.count("低风险")
-        case_candidate_count = sum(
-            1 for t in top_topics if isinstance(t, dict) and t.get("case_candidate")
-        )
-        highest_topic = None
-        if top_topics:
-            highest_topic = max(top_topics, key=lambda t: float(t.get("risk_score") or 0))
-        highest_risk_topic = (
-            str(highest_topic.get("topic") or "") if isinstance(highest_topic, dict) else ""
-        )
-        highest_risk_level = (
-            str(highest_topic.get("risk_level") or "低风险")
-            if isinstance(highest_topic, dict)
-            else "低风险"
-        )
-        overview = (
-            f"共识别 {len(top_topics)} 个热点，其中重大风险 {major_count} 个、高风险 {high_count} 个、"
-            f"中风险 {medium_count} 个、低风险 {low_count} 个；"
-            f"建议沉淀为案例候选 {case_candidate_count} 个。"
-        )
-        if highest_risk_topic:
-            overview += f" 当前最高风险热点为“{highest_risk_topic}”，等级为{highest_risk_level}。"
-        return {
-            "overview": overview,
-            "risk_counts": {
-                "重大风险": major_count,
-                "高风险": high_count,
-                "中风险": medium_count,
-                "低风险": low_count,
-            },
-            "case_candidate_count": case_candidate_count,
-            "highest_risk_topic": highest_risk_topic,
-            "highest_risk_level": highest_risk_level,
-        }
-
-    @staticmethod
     def _fallback_insight(news_list: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         无模型可用时的规则兜底：按排名/热度提取热点标题。
@@ -1109,23 +1116,19 @@ class InsightNode:
             rank = int(item.get("rank") or 50)
             hot = float(item.get("hot_value") or 0)
             heat_score = max(20.0, min(100.0, 100.0 - rank * 2 + (hot / 1000000.0)))
-            sentiment = "中性"
-            category = "其他"
             top_topics.append(
                 {
                     "topic": title,
-                    "sentiment": sentiment,
+                    "sentiment": "中性",
                     "comment": f"来自{item.get('source_name') or item.get('source') or '多平台'}热榜，建议持续跟踪事件演化。",
                     "heat_score": round(heat_score, 1),
-                    "category": category,
+                    "category": "其他",
                 }
             )
             if len(top_topics) >= 8:
                 break
-        enriched_topics = InsightNode._enrich_hot_topics(top_topics)
         return {
-            "top_topics": enriched_topics,
-            "situation_summary": InsightNode._build_situation_summary(enriched_topics),
+            "top_topics": top_topics,
             "summary": "当前报告由规则引擎生成（未启用大模型深度归因），建议在模型可用时重新生成以获得更细粒度洞察。",
         }
 
@@ -1297,16 +1300,6 @@ class InsightNode:
 
                     analysis_result = {"top_topics": [], "summary": summary_text}
 
-            if isinstance(analysis_result, dict):
-                analysis_result["top_topics"] = self._enrich_hot_topics(analysis_result.get("top_topics") or [])
-                analysis_result["situation_summary"] = self._build_situation_summary(analysis_result["top_topics"])
-            else:
-                analysis_result = {
-                    "top_topics": [],
-                    "summary": "模型返回结果格式异常",
-                    "situation_summary": self._build_situation_summary([]),
-                }
-
             return {"analysis_result": analysis_result}
         except Exception as e:
             print(f"InsightNode Error: {e}")
@@ -1473,6 +1466,7 @@ def render_langgraph_html_report(
     analysis_result: Dict,
     forum_discussion: str,
     classification_stats: Optional[Dict[str, Any]] = None,
+    domain_cluster_stats: Optional[Dict[str, Any]] = None,
 ) -> str:
     """使用与 main.py 一致的 HTML 模板生成舆情报告，保留来源与链接、支持保存为图片"""
     now = get_beijing_time()
@@ -1480,10 +1474,7 @@ def render_langgraph_html_report(
     total_news = len(news_list)
     top_topics = analysis_result.get("top_topics") or []
     summary = analysis_result.get("summary") or "暂无总结"
-    situation_summary = analysis_result.get("situation_summary") if isinstance(analysis_result, dict) else {}
-    situation_overview = ""
-    if isinstance(situation_summary, dict):
-        situation_overview = str(situation_summary.get("overview") or "")
+    domain_section_html = _build_domain_cluster_section(domain_cluster_stats)
 
     # 使用 ClassifyNode 生成的分类统计结果，如果没有则回退到原有逻辑
     if classification_stats:
@@ -1586,14 +1577,6 @@ def render_langgraph_html_report(
         .event-tag-down { background: #6b7280; }
         .event-tag-stable { background: #9ca3af; }
         .category-tag { display: inline-block; background: #f0f9ff; color: #0369a1; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; margin-right: 8px; border: 1px solid #bae6fd; }
-        .risk-tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; margin-right: 6px; }
-        .risk-major { background: #7f1d1d; color: #fff; }
-        .risk-high { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
-        .risk-medium { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
-        .risk-low { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-        .risk-factors { margin-top: 6px; font-size: 12px; color: #7c2d12; }
-        .deep-dive-command { margin-top: 6px; font-size: 12px; color: #2563eb; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 6px 8px; word-break: break-all; }
-        .situation-box { background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #4f46e5; border-radius: 8px; padding: 12px; margin-top: 12px; font-size: 13px; color: #334155; }
         .topic-meta { font-size: 12px; color: #64748b; margin-bottom: 6px; }
         .topic-comment { font-size: 13px; color: #475569; }
         .source-group { margin-bottom: 24px; }
@@ -1626,6 +1609,34 @@ def render_langgraph_html_report(
         .footer { margin-top: 24px; padding: 20px 24px; background: #f8f9fa; border-top: 1px solid #e5e7eb; text-align: center; }
         .footer-content { font-size: 13px; color: #6b7280; line-height: 1.6; }
         .project-name { font-weight: 600; color: #374151; }
+        .domain-cluster-intro { white-space: normal; font-size: 13px; color: #64748b; margin-bottom: 16px; line-height: 1.5; }
+        .domain-cluster-count { font-weight: 500; color: #94a3b8; }
+        .cluster-card { margin-bottom: 14px; padding: 12px; background: #faf5ff; border-radius: 8px; border-left: 4px solid #7c3aed; }
+        .cluster-rep { font-size: 14px; font-weight: 600; color: #1e293b; margin-bottom: 6px; line-height: 1.45; }
+        .domain-badge { display: inline-block; background: #ede9fe; color: #5b21b6; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-right: 8px; vertical-align: middle; }
+        .cluster-meta { font-size: 12px; color: #64748b; margin-bottom: 6px; }
+        .cluster-samples { font-size: 12px; color: #475569; }
+        .cluster-sample { margin-top: 4px; padding-left: 2px; }
+        .forum-modules { display: flex; flex-direction: column; gap: 14px; }
+        .forum-mod { border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; background: #fff; box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06); }
+        .forum-mod-head { padding: 12px 16px; border-bottom: 1px solid rgba(0,0,0,0.06); display: flex; align-items: center; gap: 10px; }
+        .forum-mod-kicker { font-size: 13px; font-weight: 700; letter-spacing: 0.02em; color: #1e293b; }
+        .forum-mod-content { padding: 14px 16px 16px; font-size: 14px; line-height: 1.7; color: #374151; }
+        .forum-mod-para { margin: 0 0 12px 0; }
+        .forum-mod-para:last-child { margin-bottom: 0; }
+        .forum-mod-insight .forum-mod-head { background: linear-gradient(90deg, #eef2ff 0%, #e0e7ff 100%); border-bottom-color: #c7d2fe; }
+        .forum-mod-insight .forum-mod-kicker::before { content: "◇"; margin-right: 8px; color: #4f46e5; font-size: 12px; }
+        .forum-mod-media .forum-mod-head { background: linear-gradient(90deg, #ecfdf5 0%, #d1fae5 100%); border-bottom-color: #a7f3d0; }
+        .forum-mod-media .forum-mod-kicker::before { content: "◎"; margin-right: 8px; color: #059669; font-size: 12px; }
+        .forum-mod-query .forum-mod-head { background: linear-gradient(90deg, #fffbeb 0%, #fef3c7 100%); border-bottom-color: #fde68a; }
+        .forum-mod-query .forum-mod-kicker::before { content: "✦"; margin-right: 8px; color: #d97706; font-size: 11px; }
+        .forum-mod-judgment .forum-mod-head { background: linear-gradient(90deg, #faf5ff 0%, #f3e8ff 100%); border-bottom-color: #e9d5ff; }
+        .forum-mod-judgment .forum-mod-kicker::before { content: "◆"; margin-right: 8px; color: #7c3aed; font-size: 12px; }
+        .forum-mod-preamble { border-style: dashed; background: #f8fafc; }
+        .forum-mod-preamble .forum-mod-head { background: #f1f5f9; border-bottom-color: #e2e8f0; }
+        .forum-legacy { font-size: 14px; line-height: 1.65; color: #374151; white-space: normal; }
+        .forum-empty { color: #64748b; font-size: 14px; margin: 0; }
+        .forum-section-body { white-space: normal; }
         @media (max-width: 480px) { body { padding: 12px; } .header { padding: 24px 20px; } .content { padding: 20px; } .header-info { grid-template-columns: 1fr; } .save-buttons { position: static; margin-bottom: 16px; justify-content: center; flex-direction: column; width: 100%; } .save-btn { width: 100%; } }
     </style>
 </head>
@@ -1655,11 +1666,11 @@ def render_langgraph_html_report(
                 <div class="section-title">今日热点概览</div>
                 <div class="section-body">"""
     html += html_escape(summary)
-    if situation_overview:
-        html += '<div class="situation-box"><strong>态势摘要：</strong>' + html_escape(situation_overview) + '</div>'
     html += """</div>
             </div>
-            <div class="section">
+"""
+    html += domain_section_html
+    html += """            <div class="section">
                 <div class="section-title">热点事件</div>
 """
 
@@ -1790,14 +1801,6 @@ def render_langgraph_html_report(
         comment = t.get("comment") or ""
         heat_score = t.get("heat_score")
         event_idx = t.get("_event_index", 0)
-        risk_level = str(t.get("risk_level") or "低风险")
-        risk_score = t.get("risk_score")
-        risk_note = str(t.get("risk_note") or "")
-        risk_factors = t.get("risk_factors") if isinstance(t.get("risk_factors"), list) else []
-        deep_dive_command = str(t.get("deep_dive_command") or "")
-        case_candidate = bool(t.get("case_candidate"))
-        risk_class_map = {"重大风险": "risk-major", "高风险": "risk-high", "中风险": "risk-medium", "低风险": "risk-low"}
-        risk_class = risk_class_map.get(risk_level, "risk-low")
         
         # 获取事件的趋势、天数和类别信息
         event_info = event_info_map.get(event_idx, {})
@@ -1827,19 +1830,8 @@ def render_langgraph_html_report(
         # 趋势标签
         trend_label = TREND_LABELS.get(event_trend, "保持平稳")
         html += f' · <span class="event-tag event-tag-{event_trend}">{trend_label}</span>'
-        risk_score_text = f"{risk_score}" if risk_score is not None else "—"
-        html += f' · <span class="risk-tag {risk_class}">{html_escape(risk_level)} {html_escape(risk_score_text)}分</span>'
-        if case_candidate:
-            html += ' · <span class="category-tag">案例候选</span>'
         html += "</div>"
-        html += f'<div class="topic-comment">{html_escape(comment)}</div>'
-        if risk_factors:
-            html += '<div class="risk-factors"><strong>风险因子：</strong>' + html_escape("、".join(str(x) for x in risk_factors)) + '</div>'
-        if risk_note:
-            html += '<div class="risk-factors"><strong>处置提示：</strong>' + html_escape(risk_note) + '</div>'
-        if deep_dive_command:
-            html += '<div class="deep-dive-command"><strong>深挖入口：</strong>' + html_escape(deep_dive_command) + '</div>'
-        html += '</div>'
+        html += f'<div class="topic-comment">{html_escape(comment)}</div></div>'
     
     # 更新原始信息列表中的热点事件关联
     # 为每个原始信息匹配热点事件序号
@@ -1863,8 +1855,8 @@ def render_langgraph_html_report(
                 <div class="section-title">重大事件剖析"""
     html += html_escape(event_title_suffix)
     html += """</div>
-                <div class="section-body">"""
-    html += html_escape(forum_discussion or "暂无重大事件剖析")
+                <div class="section-body forum-section-body">"""
+    html += format_forum_discussion_html(forum_discussion or "暂无重大事件剖析")
     html += """</div>
             </div>
             <div class="section">
@@ -2115,6 +2107,7 @@ class ReportNode:
         news_data = state.get("news_data", {})
         discussion = state.get("forum_discussion", "")
         classification_stats = state.get("classification_stats")
+        domain_cluster_stats = state.get("domain_cluster_stats")
 
         news_list = news_data.get("news_list") or []
 
@@ -2147,7 +2140,13 @@ class ReportNode:
 </html>"""
             return {"html_report": empty_html}
 
-        html_content = render_langgraph_html_report(news_list, analysis_result, discussion, classification_stats)
+        html_content = render_langgraph_html_report(
+            news_list,
+            analysis_result,
+            discussion,
+            classification_stats,
+            domain_cluster_stats,
+        )
         return {"html_report": html_content}
 
 
@@ -2226,6 +2225,7 @@ def build_graph():
     # 添加其他节点
     workflow.add_node("merge_fetch", MergeFetchNode())
     workflow.add_node("normalize", NormalizeNewsNode())
+    workflow.add_node("cluster_domain", ClusterDomainNode())
     workflow.add_node("insight", InsightNode())
     workflow.add_node("classify", ClassifyNode())
     workflow.add_node("forum", ForumNode())
@@ -2253,13 +2253,61 @@ def build_graph():
         workflow.add_edge("spider", "normalize")
 
     # 后续流程
-    workflow.add_edge("normalize", "insight")
+    workflow.add_edge("normalize", "cluster_domain")
+    workflow.add_edge("cluster_domain", "insight")
     workflow.add_edge("insight", "classify")
     workflow.add_edge("classify", "forum")
     workflow.add_edge("forum", "report")
     workflow.add_edge("report", END)
 
     return workflow.compile()
+
+
+def _slim_news_items_for_snapshot(news_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """快照中仅保留结构化字段，避免冗余。"""
+    out: List[Dict[str, Any]] = []
+    for n in news_list:
+        out.append(
+            {
+                "title": n.get("title"),
+                "url": n.get("url"),
+                "source_id": n.get("source_id"),
+                "source_name": n.get("source_name") or n.get("source"),
+                "rank": n.get("rank"),
+                "hot_value": n.get("hot_value"),
+                "trend": n.get("trend"),
+                "days_on_list": n.get("days_on_list"),
+            }
+        )
+    return out
+
+
+def write_hot_run_snapshot_json(final_state: Dict[str, Any], report_html_path: Optional[str]) -> str:
+    """将本次热点流程状态写入 ``docs/case candidate/*.json``，返回绝对路径。"""
+    global LAST_HOT_SNAPSHOT_JSON
+    from utils.path import get_project_root
+
+    root = get_project_root()
+    out_dir = root / "docs" / "case candidate"
+    ensure_directory_exists(str(out_dir))
+    filename = f"hot_snapshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    output_path = out_dir / filename
+    news_data = final_state.get("news_data") or {}
+    news_list = news_data.get("news_list") or []
+    payload: Dict[str, Any] = {
+        "generated_at": get_beijing_time().isoformat(),
+        "report_html_path": report_html_path,
+        "domain_cluster_stats": final_state.get("domain_cluster_stats"),
+        "classification_stats": final_state.get("classification_stats"),
+        "analysis_result": final_state.get("analysis_result"),
+        "forum_discussion": final_state.get("forum_discussion"),
+        "news_list": _slim_news_items_for_snapshot(news_list),
+    }
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+    resolved = str(output_path.resolve())
+    LAST_HOT_SNAPSHOT_JSON = resolved
+    return resolved
 
 
 def run(config_path: Optional[str] = None) -> str:
@@ -2289,6 +2337,7 @@ def run(config_path: Optional[str] = None) -> str:
         "raw_items": [],
         "analysis_result": {},
         "classification_stats": {},
+        "domain_cluster_stats": {},
         "forum_discussion": "",
         "html_report": "",
         "error": None,
@@ -2304,19 +2353,6 @@ def run(config_path: Optional[str] = None) -> str:
     if final_state.get("html_report"):
         output_dir = Path("output_langgraph")
         ensure_directory_exists(str(output_dir))
-        latest_analysis_path = output_dir / "latest_hot_analysis.json"
-        latest_payload = {
-            "generated_at": get_beijing_time().isoformat(),
-            "analysis_result": final_state.get("analysis_result", {}),
-            "classification_stats": final_state.get("classification_stats", {}),
-        }
-        with open(latest_analysis_path, "w", encoding="utf-8") as f:
-            json.dump(latest_payload, f, ensure_ascii=False, indent=2)
-        candidate_path = output_dir / "case_candidates.json"
-        top_topics = latest_payload.get("analysis_result", {}).get("top_topics", [])
-        case_candidates = [t for t in top_topics if isinstance(t, dict) and t.get("case_candidate")]
-        with open(candidate_path, "w", encoding="utf-8") as f:
-            json.dump({"generated_at": latest_payload["generated_at"], "case_candidates": case_candidates}, f, ensure_ascii=False, indent=2)
         filename = f"bjtupubclaw_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
         output_path = output_dir / filename
 
@@ -2345,6 +2381,12 @@ def run(config_path: Optional[str] = None) -> str:
         print("\n❌ 流程执行完成，但未生成报告内容。")
         if final_state.get("error"):
             print(f"错误信息: {final_state['error']}")
+
+    try:
+        snap_path = write_hot_run_snapshot_json(final_state, report_path or None)
+        print(f"📄 热点快照 JSON: {snap_path}")
+    except Exception as e:
+        print(f"⚠️  写入热点快照 JSON 失败: {e}")
 
     return report_path
 
