@@ -2174,6 +2174,35 @@ def _topic_relevance_metrics(
     coverage_phrase = float(len(set(phrase_hits))) / float(phrase_denom)
     composite = round(0.55 * coverage + 0.45 * coverage_phrase, 4)
 
+    generic_terms = frozenset(
+        {"中国", "国家", "发展", "工作", "生活", "社会", "全球", "世界", "市场"},
+    )
+    anchor_for_generic: set[str] = set(anchor_tokens)
+    for token in list(anchor_tokens):
+        if len(token) >= 4 and re.fullmatch(r"[\u4e00-\u9fff]+", token or ""):
+            for i in range(len(token) - 1):
+                sub = token[i : i + 2]
+                if len(sub) >= 2:
+                    anchor_for_generic.add(sub)
+    generic_top_terms: List[str] = []
+    seen_generic: set[str] = set()
+    ranked_keywords = [str(w or "").strip() for w in top_keywords[:80] if str(w or "").strip()]
+    for kw in ranked_keywords:
+        polluted = False
+        if kw in generic_terms:
+            polluted = True
+        else:
+            for anchor in anchor_for_generic:
+                if len(anchor) >= 2 and anchor in kw and kw != anchor and len(kw) > len(anchor) + 1:
+                    polluted = True
+                    break
+        if polluted and kw not in seen_generic:
+            seen_generic.add(kw)
+            generic_top_terms.append(kw)
+    top_n = max(1, len(ranked_keywords))
+    generic_top_ratio = round(len(generic_top_terms) / float(top_n), 4)
+    generic_pollution_suspected = generic_top_ratio >= 0.5
+
     return {
         "anchor_count": len(anchor_tokens),
         "keyword_token_count": len(keyword_tokens),
@@ -2183,6 +2212,9 @@ def _topic_relevance_metrics(
         "coverage_phrase": round(coverage_phrase, 4),
         "phrase_hits": list(dict.fromkeys(phrase_hits))[:12],
         "composite": composite,
+        "generic_top_terms": generic_top_terms[:20],
+        "generic_top_ratio": generic_top_ratio,
+        "generic_pollution_suspected": generic_pollution_suspected,
     }
 
 
@@ -3518,6 +3550,9 @@ def run_event_analysis_pipeline(
                 "min_coverage": min_topic_coverage,
                 "overlap_terms": relevance.get("overlap_terms", []),
                 "phrase_hits": relevance.get("phrase_hits", []),
+                "generic_top_ratio": relevance.get("generic_top_ratio", 0.0),
+                "generic_pollution_suspected": relevance.get("generic_pollution_suspected", False),
+                "generic_top_terms": relevance.get("generic_top_terms", []),
             },
         )
         guard_score = float(relevance.get("composite", relevance.get("coverage", 0.0)) or 0.0)

@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{REPORT_TITLE}} | 舆情智库深度研判</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <style>
         :root {
             --primary: #5d8aa8;         /* 莫兰迪蓝 */
@@ -118,9 +120,38 @@
         footer { text-align: center; padding: 50px; color: var(--text-muted); border-top: 1px solid var(--border-color); font-size: 0.9rem; }
 
         @media (max-width: 1000px) { .grid-2 { grid-template-columns: 1fr; } }
+
+        .report-export-toolbar {
+            position: fixed;
+            top: 14px;
+            right: 14px;
+            z-index: 9999;
+            display: flex;
+            gap: 8px;
+        }
+        .report-export-toolbar button {
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            color: var(--text-main);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        .report-export-toolbar button:hover { background: #f8fafc; }
+        @media print {
+            .no-print,
+            .report-export-toolbar { display: none !important; }
+        }
     </style>
 </head>
 <body>
+
+<div class="report-export-toolbar no-print">
+    <button type="button" onclick="exportReportPDF(event)">导出PDF</button>
+    <button type="button" onclick="exportReportImage(event)">导出图片</button>
+</div>
 
 <div class="container">
     <header>
@@ -310,6 +341,62 @@
             itemSize: 14,
             feature: { saveAsImage: { pixelRatio: 2, name: '舆情图表导出' } }
         };
+    }
+
+    function setChartToolboxVisible(visible) {
+        Object.values(chartInstances).forEach((chart) => {
+            if (!chart || typeof chart.setOption !== 'function') {
+                return;
+            }
+            chart.setOption({ toolbox: { show: !!visible } }, { replaceMerge: ['toolbox'] });
+        });
+    }
+
+    async function exportReportImage(event) {
+        if (event) {
+            event.preventDefault();
+        }
+        setChartToolboxVisible(false);
+        try {
+            const target = document.querySelector('.container') || document.body;
+            const canvas = await html2canvas(target, {
+                backgroundColor: '#ffffff',
+                scale: 2,
+                useCORS: true,
+                logging: false,
+            });
+            const link = document.createElement('a');
+            link.download = 'report.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        } finally {
+            setChartToolboxVisible(true);
+        }
+    }
+
+    async function exportReportPDF(event) {
+        if (event) {
+            event.preventDefault();
+        }
+        setChartToolboxVisible(false);
+        try {
+            const target = document.querySelector('.container') || document.body;
+            const canvas = await html2canvas(target, {
+                backgroundColor: '#ffffff',
+                scale: 2,
+                useCORS: true,
+                logging: false,
+            });
+            const img = canvas.toDataURL('image/jpeg', 0.92);
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const imgHeight = (canvas.height * pageWidth) / canvas.width;
+            pdf.addImage(img, 'JPEG', 0, 0, pageWidth, imgHeight);
+            pdf.save('report.pdf');
+        } finally {
+            setChartToolboxVisible(true);
+        }
     }
 
     function axisStyle() {

@@ -115,6 +115,12 @@ class RuntimeHarness:
         if not events:
             return {"name": "topic_relevance_quality", "status": "warning", "reason": "missing_topic_relevance_event"}
         d = events[-1].get("details", {})
+        if d.get("generic_pollution_suspected") is True:
+            return {
+                "name": "topic_relevance_quality",
+                "status": "warning",
+                "reason": "topic_keywords_generic_pollution",
+            }
         coverage = float(d.get("coverage", 0.0) or 0.0)
         composite = float(d.get("composite", 0.0) or 0.0)
         min_coverage = float(d.get("min_coverage", 0.12) or 0.12)

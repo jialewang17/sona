@@ -1564,3 +1564,24 @@ def build_html_from_morandi_template(
             ]
 
     return merge_morandi_template(template_html, text_map, report_config, report_data)
+
+
+def _polish_report_prose(text: str) -> str:
+    """去除协同/过程文件等元话术，统一为可对外发布的监测表述。"""
+    out = str(text or "").strip()
+    if not out:
+        return out
+    replacements = (
+        ("根据用户补充研判：", ""),
+        ("用户补充研判：", ""),
+        ("用户补充", ""),
+        ("过程文件显示，", ""),
+        ("过程文件显示", ""),
+        ("过程文件", ""),
+    )
+    for old, new in replacements:
+        out = out.replace(old, new)
+    out = re.sub(r"\s+", " ", out).strip()
+    if "监测数据" not in out:
+        out = f"监测数据显示：{out}"
+    return out
