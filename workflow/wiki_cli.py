@@ -1482,6 +1482,7 @@ def retrieve_wiki_sources(query: str, *, topk: int = 6, project_root: Path | Non
     index_used = False
     index_hits = 0
     pages_scanned = 0
+    domain: str | None = None
 
     if wiki_root is not None:
         domain = _infer_domain_from_project_memory(query, project_root=root) or _infer_domain_for_wiki_query(query)
