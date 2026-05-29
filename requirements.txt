@@ -24,6 +24,13 @@ neo4j>=5.20.0
 # 中文分词与高频词统计
 jieba>=0.42.1
 
+# BERTopic 主题聚类（analysis_topic_bertopic，可选）
+pandas>=2.0.0
+numpy>=1.24.0,<2.4
+umap-learn>=0.5.5
+hdbscan>=0.8.33
+bertopic>=0.16.0
+
 # 浏览器自动化（用于 NetInsight 登录）
 playwright>=1.40.0
 

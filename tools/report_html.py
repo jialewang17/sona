@@ -17,6 +17,7 @@ from langchain_core.tools import tool
 from model.factory import get_report_model
 from tools.report_html_template import (
     build_html_from_morandi_template,
+    ensure_topic_bertopic_canonical_for_report,
     format_report_length_instruction,
     get_report_html_template_path,
     normalize_report_length,
@@ -1740,6 +1741,8 @@ def report_html(
             "html_file_path": "",
             "file_url": ""
         }, ensure_ascii=False)
+
+    json_files = ensure_topic_bertopic_canonical_for_report(analysisResultsDir, json_files)
     
     # 获取报告模型和prompt
     try:
@@ -1907,7 +1910,7 @@ def report_html(
         )
         prompt += (
             "\n\n【基础数据描述与知识库分区约束】\n"
-            "基础数据描述章节（声量、情感、关键时间节点、地域、核心发布者、词云、生命周期）只能依据本次过程文件数据得出描述性结论，"
+            "基础数据描述章节（声量、情感、关键时间节点、地域、核心发布者、词云、生命周期、主题聚类）只能依据本次过程文件数据得出描述性结论，"
             "不得引用历史知识库观点或往期案例来替代当前数据解读。\n"
             "知识库/Wiki/OPRAG 内容仅用于：理论研判、回应观察、处置建议、总结复盘。"
         )

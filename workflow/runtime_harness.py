@@ -224,6 +224,7 @@ class RuntimeHarness:
             "channel_distribution.json",
             "region_stats.json",
             "author_stats.json",
+            "topic_bertopic_latest.json",
             "volume_stats.json",
             "timeline_analysis_fallback_20260426_002836.json",
             "sentiment_analysis_fallback_20260426_002836.json",

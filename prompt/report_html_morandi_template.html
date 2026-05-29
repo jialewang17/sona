@@ -91,6 +91,32 @@
         .emotion-typical-card ul { margin: 0; padding-left: 18px; font-size: 0.82rem; color: var(--text-main); line-height: 1.45; }
         .emotion-typical-card li { margin-bottom: 6px; word-break: break-word; }
         .emotion-typical-empty { font-size: 0.85rem; color: var(--text-muted); padding: 8px 0; }
+
+        .topic-keywords-root { margin-top: 4px; max-height: 420px; overflow-y: auto; padding-right: 4px; }
+        .topic-keywords-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 12px;
+        }
+        .topic-keyword-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--primary);
+            border-radius: 10px;
+            padding: 12px 14px;
+        }
+        .topic-keyword-card h4 { font-size: 0.92rem; color: var(--primary-strong); margin-bottom: 8px; line-height: 1.35; }
+        .topic-keyword-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+        .topic-keyword-tag {
+            display: inline-block;
+            font-size: 0.78rem;
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: rgba(93, 138, 168, 0.12);
+            color: var(--text-main);
+            border: 1px solid rgba(93, 138, 168, 0.22);
+        }
+        .topic-cluster-subtitle { font-size: 0.95rem; font-weight: 700; color: var(--primary-strong); margin: 4px 0 10px; }
         .wordcloud-box { position: relative; height: 420px; width: 100%; margin-top: 15px; overflow: hidden; border-radius: 12px; background: linear-gradient(180deg, rgba(93,138,168,0.07), rgba(255,255,255,0.8)); border: 1px solid var(--border-color); }
         .wordcloud-box .w {
             position: absolute;
@@ -279,6 +305,24 @@
             <div class="analysis-summary">
                 <h3>简要分析结论</h3>
                 <ul>{{CHART_LIFECYCLE_ANALYSIS}}</ul>
+            </div>
+        </div>
+
+        <div id="topicBertopicSection" class="card" style="margin-bottom: 25px;">
+            <h3>主题聚类分析（BERTopic + 议题合并）</h3>
+            <div class="grid-2">
+                <div>
+                    <div class="topic-cluster-subtitle">各议题文档数占比</div>
+                    <div id="topicBertopicPieChart" class="chart-box"></div>
+                </div>
+                <div>
+                    <div class="topic-cluster-subtitle">各议题 Top8 关键词</div>
+                    <div id="topicKeywordsRoot" class="topic-keywords-root" aria-label="各议题关键词"></div>
+                </div>
+            </div>
+            <div class="analysis-summary">
+                <h3>简要分析结论</h3>
+                <ul>{{CHART_TOPIC_BERTOPIC_ANALYSIS}}</ul>
             </div>
         </div>
     </section>
@@ -776,6 +820,75 @@
                 },
             }]
         });
+
+        // 9. 主题聚类：文档占比饼图 + 各议题 Top8 关键词
+        (function renderTopicBertopicSection() {
+            const section = document.getElementById('topicBertopicSection');
+            const pieEl = document.getElementById('topicBertopicPieChart');
+            const kwRoot = document.getElementById('topicKeywordsRoot');
+            const cluster = (REPORT_DATA && REPORT_DATA.charts && REPORT_DATA.charts.topicCluster)
+                ? REPORT_DATA.charts.topicCluster
+                : {};
+            const pieData = Array.isArray(cluster.docShare) ? cluster.docShare : [];
+            const topicRows = Array.isArray(cluster.topics) ? cluster.topics : [];
+            if (!section || !pieData.length) {
+                if (section) section.style.display = 'none';
+                return;
+            }
+            if (pieEl) {
+                chartInstances.topicBertopicPie = echarts.init(pieEl);
+                chartInstances.topicBertopicPie.setOption({
+                    color: ECHARTS_THEME.colors,
+                    animationDuration: 900,
+                    tooltip: { trigger: 'item', confine: true, formatter: '{b}<br/>文档数：{c}<br/>占比：{d}%' },
+                    legend: { type: 'scroll', bottom: '2%', left: 'center', textStyle: { color: ECHARTS_THEME.subText, fontSize: 11 } },
+                    toolbox: baseToolbox(),
+                    series: [{
+                        type: 'pie',
+                        radius: ['38%', '68%'],
+                        center: ['50%', '46%'],
+                        itemStyle: { borderRadius: 8, borderColor: '#fff', borderWidth: 2 },
+                        label: { formatter: '{b}\n{d}%', fontSize: 11, color: ECHARTS_THEME.subText },
+                        emphasis: { scale: true, scaleSize: 8, itemStyle: { shadowBlur: 16, shadowColor: 'rgba(0,0,0,0.16)' } },
+                        data: pieData
+                    }]
+                });
+            }
+            if (kwRoot) {
+                kwRoot.innerHTML = '';
+                const grid = document.createElement('div');
+                grid.className = 'topic-keywords-grid';
+                topicRows.forEach((row) => {
+                    if (!row) return;
+                    const label = String(row.label || '议题').trim();
+                    const docCount = Number(row.docCount) || 0;
+                    const keywords = Array.isArray(row.keywords) ? row.keywords.slice(0, 8) : [];
+                    const card = document.createElement('div');
+                    card.className = 'topic-keyword-card';
+                    const h4 = document.createElement('h4');
+                    h4.textContent = docCount > 0 ? `${label}（${docCount}篇）` : label;
+                    card.appendChild(h4);
+                    const tags = document.createElement('div');
+                    tags.className = 'topic-keyword-tags';
+                    if (keywords.length) {
+                        keywords.forEach((kw, idx) => {
+                            const tag = document.createElement('span');
+                            tag.className = 'topic-keyword-tag';
+                            tag.textContent = `${idx + 1}. ${String(kw || '').trim()}`;
+                            tags.appendChild(tag);
+                        });
+                    } else {
+                        const tag = document.createElement('span');
+                        tag.className = 'topic-keyword-tag';
+                        tag.textContent = '暂无关键词';
+                        tags.appendChild(tag);
+                    }
+                    card.appendChild(tags);
+                    grid.appendChild(card);
+                });
+                kwRoot.appendChild(grid);
+            }
+        })();
 
         // 渲染时间线
         const tlList = document.getElementById('timelineList');

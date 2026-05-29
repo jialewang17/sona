@@ -45,8 +45,9 @@ from tools import (
     build_event_reference_links,
     load_sentiment_knowledge,
 )
+from tools.data_bertopic_qwen import analysis_topic_bertopic
 from utils.path import ensure_task_dirs, get_sandbox_dir, ensure_task_readable_alias
-from utils.task_context import set_task_id
+from utils.task_context import get_task_id, set_task_id
 from utils.session_manager import SessionManager
 from workflow.telemetry import append_ndjson_log as _telemetry_append_ndjson_log
 from workflow.netinsight_keywords import NETINSIGHT_PLATFORMS, build_data_num_search_words
@@ -272,12 +273,14 @@ def _analysis_stage_enabled(kind: str) -> bool:
     默认开启，可用环境变量关闭：
     - SONA_ANALYSIS_ENABLE_TIMELINE=false
     - SONA_ANALYSIS_ENABLE_SENTIMENT=false
+    - SONA_ANALYSIS_ENABLE_TOPIC_BERTOPIC=false  关闭 BERTopic 主题聚类（默认开启）
     """
     key = str(kind or "").strip().lower()
-    if key not in {"timeline", "sentiment"}:
+    if key not in {"timeline", "sentiment", "topic_bertopic"}:
         return True
     env_name = f"SONA_ANALYSIS_ENABLE_{key.upper()}"
-    raw = str(os.environ.get(env_name, "true")).strip().lower()
+    default_on = "true"
+    raw = str(os.environ.get(env_name, default_on)).strip().lower()
     return raw in {"1", "true", "yes", "y", "on"}
 
 
@@ -291,6 +294,9 @@ def _build_skipped_analysis_payload(kind: str, reason: str) -> Dict[str, Any]:
     if kind == "timeline":
         payload["timeline"] = []
         payload["summary"] = ""
+    if kind == "topic_bertopic":
+        payload["topics"] = []
+        payload["statistics"] = {}
     if kind == "sentiment":
         payload["statistics"] = {
             "total": 0,
@@ -352,8 +358,15 @@ def _invoke_tool_to_json_with_timeout(
     为单个工具调用增加超时保护，避免顺序执行场景下某一步无限阻塞。
     """
     sec = max(10, min(int(timeout_sec or 120), 3600))
+    parent_task_id = get_task_id()
+
+    def _run_in_worker() -> Dict[str, Any]:
+        if parent_task_id:
+            set_task_id(parent_task_id)
+        return _invoke_tool_to_json(tool_obj, payload)
+
     pool = ThreadPoolExecutor(max_workers=1)
-    fut = pool.submit(_invoke_tool_to_json, tool_obj, payload)
+    fut = pool.submit(_run_in_worker)
     try:
         return fut.result(timeout=sec)
     except FuturesTimeoutError:
@@ -384,6 +397,17 @@ def _ensure_analysis_result_file(
     """
     path_raw = str(result_json.get("result_file_path") or "").strip()
     if path_raw and Path(path_raw).exists():
+        if kind == "topic_bertopic":
+            try:
+                with open(path_raw, encoding="utf-8", errors="replace") as f:
+                    saved = json.load(f)
+                if isinstance(saved, dict):
+                    merged = dict(saved)
+                    merged.setdefault("topics", result_json.get("topics", []) or [])
+                    merged.setdefault("statistics", result_json.get("statistics", {}) or {})
+                    _sync_topic_bertopic_latest_file(process_dir, merged)
+            except Exception:
+                _sync_topic_bertopic_latest_file(process_dir, result_json)
         return path_raw
 
     fallback_payload: Dict[str, Any] = {"kind": kind, "generated_at": datetime.now().isoformat(sep=" ")}
@@ -401,6 +425,14 @@ def _ensure_analysis_result_file(
                 et = st.get("emotion_typical_expressions")
         if isinstance(et, dict):
             fallback_payload["emotion_typical_expressions"] = et
+    elif kind == "topic_bertopic":
+        fallback_payload["topics"] = result_json.get("topics", []) or []
+        fallback_payload["statistics"] = result_json.get("statistics", {}) or {}
+        arts = result_json.get("artifacts")
+        if isinstance(arts, dict):
+            fallback_payload["artifacts"] = arts
+        if str(result_json.get("event_introduction", "") or "").strip():
+            fallback_payload["event_introduction"] = result_json.get("event_introduction")
     else:
         fallback_payload["result"] = result_json
     if "error" in result_json:
@@ -411,7 +443,38 @@ def _ensure_analysis_result_file(
     fallback_path = process_dir / f"{kind}_analysis_fallback_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     with open(fallback_path, "w", encoding="utf-8", errors="replace") as f:
         json.dump(fallback_payload, f, ensure_ascii=False, indent=2)
+    if kind == "topic_bertopic":
+        _sync_topic_bertopic_latest_file(process_dir, fallback_payload)
     return str(fallback_path)
+
+
+def _sync_topic_bertopic_latest_file(process_dir: Path, payload: Dict[str, Any]) -> str:
+    """
+    将主题聚类结果同步为稳定文件名 topic_bertopic_latest.json，供 report_html 优先读取。
+    """
+    topics = payload.get("topics")
+    if not isinstance(topics, list) or not topics:
+        return ""
+    latest_path = process_dir / "topic_bertopic_latest.json"
+    body: Dict[str, Any] = {
+        "kind": "topic_bertopic",
+        "generated_at": datetime.now().isoformat(sep=" "),
+        "topics": topics,
+        "statistics": payload.get("statistics", {}) or {},
+    }
+    if str(payload.get("event_introduction", "") or "").strip():
+        body["event_introduction"] = payload.get("event_introduction")
+    arts = payload.get("artifacts")
+    if isinstance(arts, dict):
+        body["artifacts"] = arts
+    if str(payload.get("error", "") or "").strip():
+        body["error"] = payload.get("error")
+    source = str(payload.get("result_file_path", "") or "").strip()
+    if source:
+        body["source_result_file_path"] = source
+    with open(latest_path, "w", encoding="utf-8", errors="replace") as f:
+        json.dump(body, f, ensure_ascii=False, indent=2)
+    return str(latest_path)
 
 
 def _validate_time_range(time_range: str) -> bool:
@@ -3680,14 +3743,66 @@ def run_event_analysis_pipeline(
             data={"error": str(e)},
         )
 
-    # ============ 6.4) timeline（顺序执行） ============
+    # ============ 6.4) analysis_topic_bertopic（可选，失败可跳过） ============
+    topic_bertopic_enabled = _analysis_stage_enabled("topic_bertopic")
+    topic_bertopic_json: Dict[str, Any] = {}
+    topic_bertopic_path = ""
+    if debug:
+        console.print(
+            f"[bold]Step6.4: analysis_topic_bertopic ({'on' if topic_bertopic_enabled else 'off'})[/bold]"
+        )
+    if not topic_bertopic_enabled:
+        topic_bertopic_json = _build_skipped_analysis_payload(
+            "topic_bertopic", "SONA_ANALYSIS_ENABLE_TOPIC_BERTOPIC=false"
+        )
+    else:
+        topic_bertopic_timeout_sec = max(
+            120,
+            min(_safe_int(os.environ.get("SONA_TOPIC_BERTOPIC_TIMEOUT_SEC", "1800"), 1800), 7200),
+        )
+        try:
+            topic_bertopic_json = _invoke_tool_to_json_with_timeout(
+                analysis_topic_bertopic,
+                {
+                    "eventIntroduction": search_plan["eventIntroduction"],
+                    "dataFilePath": save_path,
+                },
+                timeout_sec=topic_bertopic_timeout_sec,
+                tool_name="analysis_topic_bertopic",
+            )
+            topic_bertopic_path = str(topic_bertopic_json.get("result_file_path") or "")
+            if debug and topic_bertopic_path:
+                console.print(f"[green]✅ 主题聚类完成[/green] result_file_path={topic_bertopic_path}")
+        except Exception as e:
+            topic_bertopic_json = {
+                "error": str(e),
+                "topics": [],
+                "statistics": {},
+                "result_file_path": "",
+            }
+            if debug:
+                console.print("[yellow]⚠️ analysis_topic_bertopic 执行失败，已跳过，不影响后续流程[/yellow]")
+            _append_ndjson_log(
+                run_id="event_analysis_topic_bertopic",
+                hypothesis_id="H52_topic_bertopic_optional_skip_on_error",
+                location="workflow/event_analysis_pipeline.py:topic_bertopic_optional",
+                message="analysis_topic_bertopic 执行失败，已按可选步骤跳过",
+                data={"error": str(e)},
+            )
+    topic_bertopic_path = _ensure_analysis_result_file(
+        process_dir=process_dir,
+        kind="topic_bertopic",
+        result_json=topic_bertopic_json,
+    )
+
+    # ============ 6.5) timeline（顺序执行） ============
     timeline_enabled = _analysis_stage_enabled("timeline")
     sentiment_enabled = _analysis_stage_enabled("sentiment")
     if debug:
-        console.print(f"[bold]Step6.4: analysis_timeline ({'on' if timeline_enabled else 'off'})[/bold]")
+        console.print(f"[bold]Step6.5: analysis_timeline ({'on' if timeline_enabled else 'off'})[/bold]")
         console.print(f"[bold]Step7: analysis_sentiment ({'on' if sentiment_enabled else 'off'})[/bold]")
     _progress_advance()
-    _progress_step("Step6.4-7: timeline + sentiment")
+    _progress_step("Step6.5-7: timeline + sentiment")
 
     analysis_start = time.time()
     single_timing: Dict[str, float] = {"timeline_sec": 0.0, "sentiment_sec": 0.0}
@@ -3816,6 +3931,7 @@ def run_event_analysis_pipeline(
         },
     )
     # #endregion debug_log_H25_analysis_result_paths
+
     sentiment_stats = sentiment_json.get("statistics") if isinstance(sentiment_json.get("statistics"), dict) else {}
     runtime_harness.record(
         "sentiment_quality",
@@ -3832,7 +3948,7 @@ def run_event_analysis_pipeline(
 
     # ============ 6.5) channel（平台占比，生成饼图数据） ============
     if debug:
-        console.print("[bold]Step6.5: channel_distribution (optional)[/bold]")
+        console.print("[bold]Step6.6: channel_distribution (optional)[/bold]")
     try:
         calc_source = ""
         channel_counts: Dict[str, int] = {}
@@ -3888,7 +4004,7 @@ def run_event_analysis_pipeline(
     # ============ 8) 初步解读（interpretation.json） ============
     # ============ 6.6) volume_stats（可选，失败可跳过） ============
     if debug:
-        console.print("[bold]Step6.6: volume_stats (optional)[/bold]")
+        console.print("[bold]Step6.7: volume_stats (optional)[/bold]")
 
     try:
         volume_json = _invoke_tool_to_json(
@@ -3913,7 +4029,7 @@ def run_event_analysis_pipeline(
 
     # ============ 6.7) user_portrait（可选，失败可跳过） ============
     if debug:
-        console.print("[bold]Step6.7: user_portrait (optional)[/bold]")
+        console.print("[bold]Step6.8: user_portrait (optional)[/bold]")
     try:
         portrait_json = _invoke_tool_to_json(
             user_portrait,

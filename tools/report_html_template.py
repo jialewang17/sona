@@ -77,6 +77,7 @@ _PLACEHOLDER_KEYS = frozenset(
         "CHART_CHANNEL_ANALYSIS",
         "CHART_RADAR_ANALYSIS",
         "CHART_LIFECYCLE_ANALYSIS",
+        "CHART_TOPIC_BERTOPIC_ANALYSIS",
         "THEORY_BUTTERFLY",
         "RESPONSE_ANALYSIS_BULLETS",
         "RECAP_DISCOURSE",
@@ -98,6 +99,7 @@ _LIST_PLACEHOLDER_KEYS: Set[str] = {
     "CHART_CHANNEL_ANALYSIS",
     "CHART_RADAR_ANALYSIS",
     "CHART_LIFECYCLE_ANALYSIS",
+    "CHART_TOPIC_BERTOPIC_ANALYSIS",
     "RESPONSE_ANALYSIS_BULLETS",
     "RECAP_DRIVERS_BULLETS",
 }
@@ -447,6 +449,132 @@ def _find_channel_distribution_json(json_files: List[Dict[str, Any]]) -> Optiona
             if isinstance(c, dict):
                 return c
     return None
+
+
+def _topic_bertopic_doc_score(content: Dict[str, Any]) -> int:
+    """有效议题数（doc_count>0），用于挑选最佳主题聚类 JSON。"""
+    topics = content.get("topics")
+    if not isinstance(topics, list):
+        return 0
+    return sum(
+        1 for t in topics if isinstance(t, dict) and _safe_int(t.get("doc_count"), 0) > 0
+    )
+
+
+def _find_topic_bertopic_json(json_files: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """选取过程目录中的 topic_bertopic 结果 JSON（优先 topic_bertopic_latest.json）。"""
+    latest = _get_json_by_name(json_files, "topic_bertopic_latest.json")
+    if isinstance(latest, dict) and not latest.get("skipped") and _topic_bertopic_doc_score(latest) > 0:
+        return latest
+
+    best: Optional[Tuple[str, Dict[str, Any]]] = None
+    best_score = -1
+    for item in json_files:
+        fn = str(item.get("filename", "") or "").lower()
+        if "topic_bertopic" not in fn or not fn.endswith(".json"):
+            continue
+        content = item.get("content")
+        if not isinstance(content, dict) or content.get("skipped"):
+            continue
+        score = _topic_bertopic_doc_score(content)
+        if score <= 0:
+            continue
+        if score > best_score:
+            best_score = score
+            best = (fn, content)
+    return best[1] if best else None
+
+
+def ensure_topic_bertopic_canonical_for_report(
+    analysis_results_dir: str,
+    json_files: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """
+    报告生成前物化 topic_bertopic_latest.json，避免仅存在 fallback/时间戳文件时漏读主题聚类。
+    """
+    if _get_json_by_name(json_files, "topic_bertopic_latest.json"):
+        return json_files
+    best = _find_topic_bertopic_json(json_files)
+    if not isinstance(best, dict) or _topic_bertopic_doc_score(best) <= 0:
+        return json_files
+
+    body: Dict[str, Any] = {
+        "kind": "topic_bertopic",
+        "generated_at": datetime.now().isoformat(sep=" "),
+        "topics": best.get("topics") or [],
+        "statistics": best.get("statistics", {}) or {},
+    }
+    if str(best.get("event_introduction", "") or "").strip():
+        body["event_introduction"] = best.get("event_introduction")
+    arts = best.get("artifacts")
+    if isinstance(arts, dict):
+        body["artifacts"] = arts
+
+    latest_path = Path(analysis_results_dir) / "topic_bertopic_latest.json"
+    try:
+        with open(latest_path, "w", encoding="utf-8", errors="replace") as f:
+            json.dump(body, f, ensure_ascii=False, indent=2)
+    except OSError:
+        return json_files
+
+    out = list(json_files)
+    out.append({"filename": "topic_bertopic_latest.json", "content": body})
+    return out
+
+
+def _build_topic_bertopic_cluster_data(
+    topic_obj: Optional[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """将 analysis_topic_bertopic 结果转为 ECharts 饼图与关键词卡片数据。"""
+    empty: Dict[str, Any] = {"docShare": [], "topics": [], "available": False}
+    if not isinstance(topic_obj, dict):
+        return empty
+    topics_raw = topic_obj.get("topics")
+    if not isinstance(topics_raw, list):
+        return empty
+
+    doc_share: List[Dict[str, Any]] = []
+    topics_out: List[Dict[str, Any]] = []
+
+    for idx, row in enumerate(topics_raw):
+        if not isinstance(row, dict):
+            continue
+        label = str(row.get("label", "") or row.get("topic_id", "") or f"议题{idx}").strip()
+        if not label:
+            label = f"议题{idx}"
+        doc_count = _safe_int(row.get("doc_count"), 0)
+        if doc_count <= 0:
+            continue
+        doc_share.append({"name": label, "value": doc_count})
+
+        keywords: List[str] = []
+        kw_raw = row.get("keywords") or []
+        if isinstance(kw_raw, list):
+            for kw in kw_raw:
+                if len(keywords) >= 8:
+                    break
+                if isinstance(kw, (list, tuple)) and kw:
+                    text = str(kw[0]).strip()
+                else:
+                    text = str(kw).strip()
+                if text:
+                    keywords.append(text)
+
+        topics_out.append(
+            {
+                "label": label,
+                "docCount": doc_count,
+                "keywords": keywords[:8],
+                "description": str(row.get("description", "") or "").strip()[:240],
+            }
+        )
+
+    if not doc_share:
+        return empty
+
+    doc_share.sort(key=lambda x: _safe_int(x.get("value"), 0), reverse=True)
+    topics_out.sort(key=lambda x: _safe_int(x.get("docCount"), 0), reverse=True)
+    return {"docShare": doc_share, "topics": topics_out, "available": True}
 
 
 def _build_channel_pie_data(channel_obj: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -914,12 +1042,14 @@ def build_report_data_from_json_files(json_files: List[Dict[str, Any]]) -> Dict[
     channel_pie = _build_channel_pie_data(channel_obj)
     sentiment_fine = _build_fine_sentiment_pie_series(json_files)
     emotion_typical_expressions = _load_emotion_typical_expressions(json_files)
+    topic_cluster = _build_topic_bertopic_cluster_data(_find_topic_bertopic_json(json_files))
 
     return {
         "charts": {
             "sentiment": cfg.get("sentiment", []),
             "sentimentFine": sentiment_fine,
             "emotionTypicalExpressions": emotion_typical_expressions,
+            "topicCluster": topic_cluster,
             "volume": {
                 "dates": trend_dates or ["—"],
                 "postCounts": post_counts or [0],
@@ -1169,6 +1299,7 @@ def _default_narrative(event_introduction: str) -> Dict[str, str]:
         "CHART_KEYWORD_ANALYSIS": stub,
         "CHART_RADAR_ANALYSIS": stub,
         "CHART_LIFECYCLE_ANALYSIS": stub,
+        "CHART_TOPIC_BERTOPIC_ANALYSIS": stub,
         "THEORY_BUTTERFLY": stub,
         "RESPONSE_ANALYSIS_BULLETS": "证据不足|未发现可核验的响应链条",
         "RECAP_DISCOURSE": stub,
@@ -1243,6 +1374,13 @@ def _is_weak_list(val: Any) -> bool:
         return True
     weak_hits = sum(1 for x in items if "证据不足" in x or "未提供" in x)
     return weak_hits >= max(1, len(items) // 2)
+
+
+def _needs_chart_analysis_fallback(val: Any) -> bool:
+    """图表「简要分析结论」是否需要程序兜底（含模型未返回或返回占位字符串）。"""
+    if isinstance(val, list):
+        return _is_weak_list(val)
+    return _has_placeholder_text(val)
 
 
 def _fill_missing_narrative_sections(text_map: Dict[str, Any], report_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -1374,6 +1512,131 @@ def _fill_missing_narrative_sections(text_map: Dict[str, Any], report_data: Dict
         latest = str(stages[-1] if stages else "衰退")
         out["RECAP_TRENDS"] = f"当前整体处于{latest}期，建议将策略重心从灭火转为复盘和预防，降低同类事件复发概率。"
 
+    if _needs_chart_analysis_fallback(out.get("CHART_SENTIMENT_ANALYSIS")):
+        sent_items = [x for x in (charts.get("sentiment", []) or []) if isinstance(x, dict)]
+        sent_map = {str(x.get("name", "")): _safe_int(x.get("value", 0), 0) for x in sent_items}
+        pos = sent_map.get("正面", 0)
+        neg = sent_map.get("负面", 0)
+        neu = sent_map.get("中立", sent_map.get("中性", 0))
+        total = max(1, pos + neg + neu)
+        out["CHART_SENTIMENT_ANALYSIS"] = [
+            f"三维情感结构中「正面」约{round(100.0 * pos / total, 1)}%、「负面」约{round(100.0 * neg / total, 1)}%。",
+            "若正面占比显著高于负面，说明舆论基调偏支持或观望，但仍需关注负面样本是否集中在高互动节点。",
+            "建议抽取负面样本原文，区分事实质疑、情绪宣泄与反讽玩梗，避免将修辞误判为真实对立。",
+        ]
+
+    if _needs_chart_analysis_fallback(out.get("CHART_VOLUME_ANALYSIS")):
+        vol = charts.get("volume") if isinstance(charts.get("volume"), dict) else {}
+        dates = list(vol.get("dates") or [])
+        posts = [_safe_int(v, 0) for v in (vol.get("postCounts") or [])]
+        if posts and any(v > 0 for v in posts):
+            peak_i = max(range(len(posts)), key=lambda i: posts[i])
+            peak_v = posts[peak_i]
+            peak_d = str(dates[peak_i]) if peak_i < len(dates) else "峰值日"
+            total_p = sum(posts) or 1
+            out["CHART_VOLUME_ANALYSIS"] = [
+                f"发文量在 {peak_d} 达到峰值约 {peak_v} 条，显示讨论存在明显波峰。",
+                f"全周期累计发文约 {total_p} 条，波峰前后落差反映议题热度起伏与二次传播节奏。",
+                "建议将波峰日与时间线关键节点、主题簇变化交叉核对，识别触发抬升的外部事件。",
+            ]
+
+    if _needs_chart_analysis_fallback(out.get("CHART_AUTHOR_ANALYSIS")):
+        names = list((charts.get("author") or {}).get("names") or [])
+        vals = [_safe_int(v, 0) for v in ((charts.get("author") or {}).get("values") or [])]
+        pairs = [(str(n), v) for n, v in zip(names, vals) if str(n).strip() and str(n).strip() != "证据不足"]
+        pairs.sort(key=lambda x: x[1], reverse=True)
+        if pairs:
+            top = pairs[:3]
+            total_a = sum(v for _, v in pairs) or 1
+            top_share = round(100.0 * sum(v for _, v in top) / total_a, 1)
+            top_names = "、".join(n for n, _ in top)
+            out["CHART_AUTHOR_ANALYSIS"] = [
+                f"核心发布者集中在「{top_names}」等账号（Top{len(top)} 合计约{top_share}%），呈现头部带动结构。",
+                "作者集中度较高时，议题走向易受少数高互动账号影响，需区分原创首发与转发放大。",
+                "建议对 Top 作者样本做内容类型标注（事实帖/情绪帖/玩梗帖），识别传播链关键节点。",
+            ]
+
+    if _needs_chart_analysis_fallback(out.get("CHART_TIMELINE_ANALYSIS")):
+        tl_rows = report_data.get("timeline") if isinstance(report_data.get("timeline"), list) else []
+        events = [
+            str(r.get("event", "")).strip()
+            for r in tl_rows
+            if isinstance(r, dict) and str(r.get("event", "")).strip() and "证据不足" not in str(r.get("event", ""))
+        ]
+        if events:
+            preview = "；".join(events[:3])
+            out["CHART_TIMELINE_ANALYSIS"] = [
+                f"时间线显示关键节点包括：{preview}。",
+                "节点之间若间隔缩短、表述情绪增强，通常意味着议题从事实层面向立场层面迁移。",
+                "建议将时间线节点与当日声量峰值、主题簇切换同步查看，识别阶段转折触发因素。",
+            ]
+
+    if _needs_chart_analysis_fallback(out.get("CHART_RADAR_ANALYSIS")):
+        radar = [_safe_int(v, 0) for v in (charts.get("radarValues") or [])]
+        radar_labels = ["量", "质", "人", "场", "效"]
+        if len(radar) >= 5 and any(v > 0 for v in radar):
+            pairs = list(zip(radar_labels, radar))
+            pairs.sort(key=lambda x: x[1], reverse=True)
+            strong = "、".join(f"{n}({v})" for n, v in pairs[:2])
+            weak_dim = pairs[-1][0]
+            out["CHART_RADAR_ANALYSIS"] = [
+                f"五维雷达显示相对优势维度为{strong}，整体呈现“声量+传播场”驱动的舆情结构（估计值）。",
+                f"相对薄弱维度为「{weak_dim}」，提示在该维度上的可观测证据有限，解读时宜标注为估计。",
+                "建议结合渠道分布、情感结构与主题簇，对薄弱维度补充定向样本后再做策略取舍。",
+            ]
+
+    if _needs_chart_analysis_fallback(out.get("CHART_REGION_ANALYSIS")):
+        names = list(charts.get("region", {}).get("names", []) or [])
+        vals = list(charts.get("region", {}).get("values", []) or [])
+        pairs = [(str(n), _safe_int(v, 0)) for n, v in zip(names, vals) if str(n).strip()]
+        pairs = [p for p in pairs if p[0] != "—"]
+        pairs.sort(key=lambda x: x[1], reverse=True)
+        if pairs:
+            top = pairs[:3]
+            total = sum(v for _, v in pairs) or 1
+            top_sum = sum(v for _, v in top)
+            share = round(100.0 * top_sum / total, 1)
+            top_names = "、".join(n for n, _ in top if n)
+            out["CHART_REGION_ANALYSIS"] = [
+                f"主要声量集中在「{top_names}」等地（Top{len(top)}合计约{share}%），呈现明显区域聚集特征。",
+                "地域分布显示讨论在部分省市更活跃，说明传播与本地用户结构、平台渗透存在关联。",
+                "若需进一步验证地域差异来源，可补充同城高互动样本与地方媒体链路进行交叉核验。",
+            ]
+
+    if _needs_chart_analysis_fallback(out.get("CHART_KEYWORD_ANALYSIS")):
+        kws = list(charts.get("keyword", []) or [])
+        kws = [x for x in kws if isinstance(x, dict) and str(x.get("name", "") or "").strip()]
+        kws.sort(key=lambda x: _safe_int(x.get("value", 0), 0), reverse=True)
+        if kws:
+            topw = [str(x["name"]) for x in kws[:8]]
+            out["CHART_KEYWORD_ANALYSIS"] = [
+                f"高频关键词集中在「{'、'.join(topw[:5])}」等，讨论焦点较为集中。",
+                "关键词结构中情绪词和评价词占比较高时，通常意味着讨论正在从事实层向立场层迁移。",
+                "可持续跟踪热词主题簇变化，观察议题是否出现外溢和泛化。",
+            ]
+
+    if _needs_chart_analysis_fallback(out.get("CHART_TOPIC_BERTOPIC_ANALYSIS")):
+        cluster = charts.get("topicCluster") if isinstance(charts.get("topicCluster"), dict) else {}
+        doc_share = [x for x in (cluster.get("docShare") or []) if isinstance(x, dict)]
+        topic_rows = [x for x in (cluster.get("topics") or []) if isinstance(x, dict)]
+        if doc_share and topic_rows:
+            total_docs = sum(_safe_int(x.get("value"), 0) for x in doc_share) or 1
+            top = sorted(doc_share, key=lambda x: _safe_int(x.get("value"), 0), reverse=True)[:3]
+            segs: List[str] = []
+            for x in top:
+                nm = str(x.get("name", "")).strip()
+                vv = _safe_int(x.get("value"), 0)
+                pct = round(100.0 * vv / total_docs, 1)
+                segs.append(f"「{nm}」约{pct}%")
+            lead = topic_rows[0]
+            lead_kws = lead.get("keywords") if isinstance(lead.get("keywords"), list) else []
+            kw_preview = "、".join(str(k) for k in lead_kws[:5] if str(k).strip())
+            out["CHART_TOPIC_BERTOPIC_ANALYSIS"] = [
+                f"主题聚类后文档占比靠前议题为：{'、'.join(segs)}，呈现议题集中度结构。",
+                f"头部议题「{lead.get('label', '')}」的代表关键词包括：{kw_preview or '—'}，可作为该议题语义锚点。",
+                "建议将主题簇与情感分布、时间线节点交叉核对，识别同一议题在不同阶段的语气迁移。",
+            ]
+
     return out
 
 
@@ -1486,9 +1749,8 @@ def build_html_from_morandi_template(
     if len(intro_val) > 600:
         text_map["INTRO_BACKGROUND"] = intro_val[:600] + "..."
 
-    # --------- 程序兜底：地域/关键词结论至少给出描述性分析 ---------
+    # 若模型输出了误导性地域文案，清空后由 _fill_missing_narrative_sections 统一兜底
     region_text_raw = str(text_map.get("CHART_REGION_ANALYSIS", "") or "")
-    # 若模型输出了误导句，且 region_stats 实际有结果，则强制清空并走程序兜底生成
     if "数据未提取明确地域分布统计，仅显示IP属地字段存在" in region_text_raw:
         names_probe = list(report_data.get("charts", {}).get("region", {}).get("names", []) or [])
         vals_probe = list(report_data.get("charts", {}).get("region", {}).get("values", []) or [])
@@ -1497,36 +1759,7 @@ def build_html_from_morandi_template(
         )
         if has_region_stats:
             text_map["CHART_REGION_ANALYSIS"] = []
-    if _is_weak_list(text_map.get("CHART_REGION_ANALYSIS")):
-        names = list(report_data.get("charts", {}).get("region", {}).get("names", []) or [])
-        vals = list(report_data.get("charts", {}).get("region", {}).get("values", []) or [])
-        pairs = [(str(n), _safe_int(v, 0)) for n, v in zip(names, vals) if str(n).strip()]
-        pairs = [p for p in pairs if p[0] != "—"]
-        pairs.sort(key=lambda x: x[1], reverse=True)
-        if pairs:
-            top = pairs[:3]
-            total = sum(v for _, v in pairs) or 1
-            top_sum = sum(v for _, v in top)
-            share = round(100.0 * top_sum / total, 1)
-            top_names = [n for n, _ in top if n]
-            top_desc = "、".join(top_names) if top_names else "主要地区"
-            text_map["CHART_REGION_ANALYSIS"] = [
-                f"主要声量集中在「{top_desc}」等地（Top{len(top)}合计约{share}%），呈现明显区域聚集特征。",
-                "地域分布显示讨论在部分省市更活跃，说明传播与本地社会经验、平台用户结构存在关联。",
-                "若需进一步验证地域差异来源，可补充同城高互动样本与地方媒体链路进行交叉核验。",
-            ]
-
-    if _is_weak_list(text_map.get("CHART_KEYWORD_ANALYSIS")):
-        kws = list(report_data.get("charts", {}).get("keyword", []) or [])
-        kws = [x for x in kws if isinstance(x, dict) and str(x.get("name", "") or "").strip()]
-        kws.sort(key=lambda x: _safe_int(x.get("value", 0), 0), reverse=True)
-        if kws:
-            topw = [str(x["name"]) for x in kws[:8]]
-            text_map["CHART_KEYWORD_ANALYSIS"] = [
-                f"高频关键词集中在「{'、'.join(topw[:5])}」等，讨论焦点更偏向冲突场景与规则认知，而非单一事实复述。",
-                "关键词结构中情绪词和评价词占比较高时，通常意味着讨论正在从事实层向立场层迁移。",
-                "可持续跟踪 Top200 热词的主题簇变化，观察议题是否出现外溢和泛化。",
-            ]
+            text_map = _fill_missing_narrative_sections(text_map, report_data)
 
     recap_discourse = str(text_map.get("RECAP_DISCOURSE", "") or "").strip()
     recap_trends = str(text_map.get("RECAP_TRENDS", "") or "").strip()
