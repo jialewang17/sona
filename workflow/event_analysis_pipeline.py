@@ -20,6 +20,7 @@ import select
 import time
 from typing import Any, Dict, List, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+from contextvars import copy_context
 
 from rich.console import Console
 from rich.prompt import Prompt
@@ -357,16 +358,10 @@ def _invoke_tool_to_json_with_timeout(
     """
     为单个工具调用增加超时保护，避免顺序执行场景下某一步无限阻塞。
     """
-    sec = max(10, min(int(timeout_sec or 120), 3600))
-    parent_task_id = get_task_id()
-
-    def _run_in_worker() -> Dict[str, Any]:
-        if parent_task_id:
-            set_task_id(parent_task_id)
-        return _invoke_tool_to_json(tool_obj, payload)
-
+    sec = max(10, min(int(timeout_sec or 120), 7200))
     pool = ThreadPoolExecutor(max_workers=1)
-    fut = pool.submit(_run_in_worker)
+    ctx = copy_context()
+    fut = pool.submit(ctx.run, _invoke_tool_to_json, tool_obj, payload)
     try:
         return fut.result(timeout=sec)
     except FuturesTimeoutError:
