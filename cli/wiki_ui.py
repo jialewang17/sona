@@ -8,13 +8,279 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
+from rich import box
+from rich.console import Group
+from rich.panel import Panel
 from rich.prompt import Prompt
+from rich.table import Table
+from rich.text import Text
 
 from cli.display import console
 from tools.oprag import build_reference_wiki
 from utils.env_loader import get_env_config, reload_env_config
 from utils.path import get_opinion_analysis_kb_root
-from workflow.wiki_cli import answer_wiki_query, _wiki_llm_enabled
+from workflow.wiki_cli import answer_wiki_query
+
+
+def _wiki_panel_width() -> int:
+    """统一 Wiki 各模块 Panel 宽度，与终端可视宽度对齐。"""
+    try:
+        return max(72, int(console.size.width))
+    except Exception:
+        return 100
+
+
+def _wiki_panel(
+    renderable: Any,
+    *,
+    title: str,
+    border_style: str,
+    padding: tuple[int, int] = (1, 2),
+) -> Panel:
+    return Panel(
+        renderable,
+        title=title,
+        border_style=border_style,
+        padding=padding,
+        expand=True,
+        width=_wiki_panel_width(),
+    )
+
+
+def _strip_markdown_for_display(text: str) -> str:
+    """去掉模型输出的 Markdown 标记，避免终端原样显示 ** 等符号。"""
+    normalized = str(text or "").replace("\r\n", "\n").replace("\r", "\n")
+    normalized = re.sub(r"^\s{0,3}#{1,6}\s*", "", normalized, flags=re.MULTILINE)
+    normalized = normalized.replace("**", "").replace("__", "")
+    normalized = re.sub(r"\*([^*\n]+)\*", r"\1", normalized)
+    normalized = normalized.replace("`", "")
+    normalized = re.sub(r"\n{3,}", "\n\n", normalized)
+    return normalized.strip()
+
+
+def _strip_template_answer_sections(answer: str) -> str:
+    """去掉模型常输出的编号模板与重复的来源块（来源由下方单独展示）。"""
+    text = _strip_markdown_for_display(answer)
+    if not text:
+        return text
+    for pat in (
+        r"\n\s*2[)\)]\s*依据来源[\s\S]*$",
+        r"\n\s*##?\s*依据来源[\s\S]*$",
+        r"\n\s*依据来源[：:][\s\S]*$",
+    ):
+        text = re.sub(pat, "", text, flags=re.IGNORECASE).strip()
+    text = re.sub(r"^1[)\)]\s*全面回答[：:\s]*", "", text).strip()
+    text = re.sub(r"^✅\s*", "", text, flags=re.MULTILINE)
+    return text
+
+
+_SECTION_TITLE_RE = re.compile(
+    r"^(?:(先说|另外|还有|此外|有趣的是|简单来说|最后|总结一下|首先)[^。\n]{0,36}[：:]|(.{2,22}[：:]))\s*",
+    re.DOTALL,
+)
+
+
+def _split_answer_into_sections(answer: str) -> List[tuple[str, str]]:
+    """将回答拆成 (小标题, 正文) 块，便于分块展示。"""
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", str(answer or "").strip()) if p.strip()]
+    if not paragraphs:
+        return [("", str(answer or "").strip())]
+
+    raw_sections: List[tuple[str, str]] = []
+    for para in paragraphs:
+        m = _SECTION_TITLE_RE.match(para)
+        if m:
+            colon = para.find("：") if "：" in para[:42] else para.find(":")
+            if 0 <= colon <= 42:
+                raw_sections.append((para[:colon].strip(), para[colon + 1 :].strip()))
+                continue
+        raw_sections.append(("", para))
+
+    merged: List[tuple[str, str]] = []
+    intro_parts: List[str] = []
+    for title, body in raw_sections:
+        if not title:
+            intro_parts.append(body)
+            continue
+        if intro_parts:
+            merged.append(("", "\n\n".join(intro_parts)))
+            intro_parts = []
+        merged.append((title, body))
+    if intro_parts:
+        merged.insert(0, ("", "\n\n".join(intro_parts)))
+    return merged or [("", str(answer or "").strip())]
+
+
+def _build_answer_renderable(sections: List[tuple[str, str]]) -> Text:
+    """组装带小标题层级的回答正文。"""
+    content = Text()
+    for idx, (title, body) in enumerate(sections):
+        if idx > 0:
+            content.append("\n\n")
+        if title:
+            content.append(f"{title}\n", style="bold cyan")
+        content.append(body.strip(), style="white")
+    return content
+
+
+def _wiki_route_label(meta: Dict[str, Any]) -> tuple[str, str]:
+    if meta.get("wiki_route") == "neo4j_qa_only":
+        nq = meta.get("neo4j_qa") if isinstance(meta.get("neo4j_qa"), dict) else {}
+        rc = nq.get("rows_count", 0)
+        return "熊猫知识库", f"图谱 {rc} 条线索"
+    if meta.get("llm_used"):
+        rc = meta.get("retrieved_count", 0)
+        return "本地 Wiki", f"摘录 {rc} 条 · LLM 合成"
+    rc = meta.get("retrieved_count", 0)
+    return "本地 Wiki", f"摘录 {rc} 条"
+
+
+def _render_wiki_header(query: str, meta: Dict[str, Any], *, source_count: int) -> None:
+    route_name, route_detail = _wiki_route_label(meta)
+    overview = Table(show_header=False, box=box.SIMPLE, padding=(0, 1), expand=True)
+    overview.add_column(style="dim", width=10, no_wrap=True)
+    overview.add_column(ratio=1)
+    overview.add_row("问题", Text(query, style="bold white"))
+    overview.add_row("知识来源", route_name)
+    overview.add_row("检索", route_detail)
+    if source_count:
+        overview.add_row("延伸阅读", f"{source_count} 篇可用")
+
+    err = str(
+        meta.get("neo4j_qa_error")
+        or meta.get("neo4j_qa_invoke_error")
+        or meta.get("llm_error")
+        or ""
+    ).strip()
+    if err:
+        overview.add_row("提示", Text(err[:160], style="yellow"))
+
+    console.print()
+    console.print(
+        _wiki_panel(
+            overview,
+            title="[bold cyan]Wiki 问答[/bold cyan]",
+            border_style="cyan",
+            padding=(0, 1),
+        )
+    )
+
+
+def _render_wiki_answer(query: str, answer: str) -> None:
+    sections = _split_answer_into_sections(answer)
+    body = _build_answer_renderable(sections)
+    subtitle = query if len(query) <= 56 else query[:55].rstrip() + "…"
+    console.print(
+        _wiki_panel(
+            body,
+            title=f"[bold green]科普回答[/bold green] [dim]· {subtitle}[/dim]",
+            border_style="green",
+            padding=(1, 2),
+        )
+    )
+
+
+def _render_wiki_sources(sources: List[Dict[str, Any]], *, graph_route: bool) -> None:
+    if not sources:
+        console.print(
+            _wiki_panel(
+                Text("暂无延伸阅读材料。", style="dim"),
+                title="[bold]延伸阅读[/bold]",
+                border_style="dim",
+                padding=(1, 2),
+            )
+        )
+        return
+
+    heading = "延伸阅读" if graph_route else "参考摘录"
+    table = Table(
+        box=box.ROUNDED,
+        show_header=True,
+        header_style="bold",
+        expand=True,
+        show_lines=False,
+        padding=(0, 1),
+    )
+    table.add_column("#", style="dim", width=3, justify="right")
+    table.add_column("资料", style="cyan", ratio=2, no_wrap=False)
+    table.add_column("摘录", style="white", ratio=5, no_wrap=False)
+
+    seen_docs: set[str] = set()
+    shown = 0
+    for item in sources:
+        if not isinstance(item, dict):
+            continue
+        label = _friendly_source_label(item)
+        snippet = _source_reading_snippet(item)
+        doc_key = str(item.get("path") or label)
+        if doc_key in seen_docs and graph_route:
+            continue
+        seen_docs.add(doc_key)
+        shown += 1
+        if shown > 4:
+            break
+        preview = snippet if len(snippet) <= 160 else snippet[:159].rstrip() + "…"
+        doc_name = _source_doc_subtitle(item)
+        label_cell = Text.assemble(
+            (label, "bold cyan"),
+            (f"\n{doc_name}", "dim italic") if doc_name and doc_name != label else "",
+        )
+        table.add_row(str(shown), label_cell, preview or "—")
+
+    panel_content: Any = table
+    if len(sources) > shown:
+        panel_content = Group(
+            table,
+            Text(f"另有 {len(sources) - shown} 条相关材料未展开。", style="dim"),
+        )
+
+    console.print(
+        _wiki_panel(
+            panel_content,
+            title=f"[bold yellow]{heading}[/bold yellow]",
+            border_style="yellow",
+            padding=(0, 1),
+        )
+    )
+
+
+def _friendly_source_label(item: Dict[str, Any]) -> str:
+    path = str(item.get("path") or "").strip()
+    if path and not path.startswith("neo4j://"):
+        stem = Path(path).stem
+        stem = re.sub(r"^【[^】]+】", "", stem)
+        if " - " in stem:
+            tail = stem.rsplit(" - ", 1)[-1].strip()
+            if tail:
+                return tail
+        if stem.strip():
+            return stem.strip()
+    title = str(item.get("title") or "").strip()
+    if title.startswith("图谱："):
+        return title[3:].strip()
+    return title or "参考资料"
+
+
+def _source_doc_subtitle(item: Dict[str, Any]) -> str:
+    """资料条目的文档名（不含完整路径）。"""
+    path = str(item.get("path") or "").strip()
+    if path and not path.startswith("neo4j://"):
+        stem = Path(path).stem
+        stem = re.sub(r"^【[^】]+】", "", stem).strip()
+        if stem:
+            return stem
+    return ""
+
+
+def _source_reading_snippet(item: Dict[str, Any]) -> str:
+    snippet = str(item.get("snippet") or "").strip()
+    if "证据摘录：" in snippet:
+        return snippet.split("证据摘录：", 1)[1].strip()
+    if "—[" in snippet and "→" in snippet:
+        lines = [ln.strip() for ln in snippet.splitlines() if ln.strip() and not ln.startswith("证据摘录")]
+        if lines:
+            return lines[0]
+    return snippet
 
 
 def _slugify_filename(text: str, max_len: int = 72) -> str:
@@ -122,89 +388,14 @@ def run_wiki_command(raw_query: str | None = None) -> None:
     get_env_config()
     result = answer_wiki_query(query, topk=6, style="teach", project_root=Path(__file__).resolve().parents[1])
     meta = result.get("_wiki_meta") if isinstance(result.get("_wiki_meta"), dict) else {}
-    if meta.get("wiki_route") == "neo4j_qa_only":
-        nq = meta.get("neo4j_qa") if isinstance(meta.get("neo4j_qa"), dict) else {}
-        mode = str(nq.get("answer_mode") or "—")
-        rc = nq.get("rows_count", "—")
-        console.print(
-            f"[green]✓[/green] [bold]本轮仅使用 Neo4j 图谱问答[/bold] "
-            f"（[cyan]tools/neo4j_qa[/cyan]；模式 [cyan]{mode}[/cyan]；图谱证据条数 [cyan]{rc}[/cyan]）"
-        )
-        err = str(meta.get("neo4j_qa_error") or meta.get("neo4j_qa_invoke_error") or "").strip()
-        if err:
-            console.print(f"[yellow]（neo4j_qa：{err}）[/yellow]")
-    elif meta.get("llm_used"):
-        console.print("[green]✓[/green] [bold]已使用 LLM（tools profile）基于检索片段生成回答[/bold]")
-    elif result.get("sources"):
-        hint = str(meta.get("llm_error") or "").strip()
-        if hint:
-            console.print(
-                "[red][bold]✗ LLM 调用失败，已回退为检索模板拼接（非模型生成）[/bold][/red]\n"
-                f"[yellow]{hint}[/yellow]"
-            )
-        elif not _wiki_llm_enabled():
-            console.print(
-                "[yellow]（未使用 LLM：`SONA_WIKI_USE_LLM` 为 0/false；"
-                "在 .env 中设为 `1` 或 `true` 可启用 RAG 合成答案）[/yellow]"
-            )
-        else:
-            console.print("[yellow]（未使用 LLM：未知原因，已用检索模板）[/yellow]")
-    if meta.get("wiki_route") != "neo4j_qa_only":
-        neo_pf = meta.get("neo4j_prefetch") if isinstance(meta.get("neo4j_prefetch"), dict) else {}
-        if neo_pf.get("used"):
-            console.print(f"[dim]（已优先合并 Neo4j 图谱证据：{neo_pf.get('rows', 0)} 条三元组）[/dim]")
-        elif str(neo_pf.get("error") or "").strip():
-            console.print(f"[dim]（Neo4j 预取跳过：{neo_pf.get('error')}）[/dim]")
-    if meta.get("wiki_route") != "neo4j_qa_only":
-        if isinstance(meta.get("weibo_aux"), dict) and meta["weibo_aux"].get("used"):
-            console.print("[dim]（已附加微博智搜辅助线索）[/dim]")
-        elif isinstance(meta.get("weibo_aux"), dict) and str(meta["weibo_aux"].get("error") or "").strip():
-            console.print(f"[dim]（微博智搜未取到片段：{meta['weibo_aux'].get('error')}）[/dim]")
-    if meta.get("wiki_route") != "neo4j_qa_only":
-        score_meta = meta.get("value_score") if isinstance(meta.get("value_score"), dict) else {}
-        if score_meta:
-            total = score_meta.get("total", 0)
-            threshold = score_meta.get("threshold", 0)
-            is_high = bool(score_meta.get("is_high_value"))
-            badge = "[green]高价值[/green]" if is_high else "[dim]普通[/dim]"
-            console.print(f"[dim]（回答价值评分：{total}/{threshold}，判定：{badge}）[/dim]")
-    if meta.get("wiki_route") != "neo4j_qa_only":
-        candidate_meta = meta.get("output_candidate") if isinstance(meta.get("output_candidate"), dict) else {}
-        if candidate_meta.get("created"):
-            console.print(
-                f"[green]✓[/green] [bold]已回流候选[/bold]："
-                f"[cyan]{candidate_meta.get('path', '')}[/cyan]"
-            )
-        elif str(candidate_meta.get("error") or "").strip():
-            console.print(f"[yellow]（候选回流失败：{candidate_meta.get('error')}）[/yellow]")
-    console.print("\n[bold]Wiki Answer[/bold]")
-    console.print(result.get("answer", ""))
     sources = result.get("sources") if isinstance(result.get("sources"), list) else []
-    if sources:
-        console.print("\n[bold]Sources（检索摘录；本地原文路径如下）[/bold]")
-        for i, item in enumerate(sources[:6], 1):
-            if not isinstance(item, dict):
-                continue
-            title = str(item.get("title", ""))
-            path = str(item.get("path", ""))
-            path_disp = str(item.get("path_display") or "").strip()
-            snippet = str(item.get("snippet", ""))
-            score = item.get("score", 0)
-            abs_path = str(item.get("abs_path") or "").strip()
-            file_uri = str(item.get("file_uri") or "").strip()
-            console.print(f"{i}. {title} [dim](score={score})[/dim]")
-            show_path = path_disp or path
-            if path_disp and path_disp != path:
-                console.print(f"   路径: {show_path} [dim](完整: {path})[/dim]")
-            else:
-                console.print(f"   路径: {show_path}")
-            if abs_path:
-                console.print(f"   [cyan]本地文件: {abs_path}[/cyan]")
-            if file_uri:
-                console.print(f"   [dim]file URI: {file_uri}[/dim]")
-            console.print(f"   摘录: {snippet}")
-    else:
-        console.print("[yellow]未检索到来源片段。[/yellow]")
+    graph_route = meta.get("wiki_route") == "neo4j_qa_only"
+
+    _render_wiki_header(query, meta, source_count=len(sources))
+    answer_text = _strip_template_answer_sections(str(result.get("answer", "")))
+    _render_wiki_answer(query, answer_text)
+    _render_wiki_sources(sources, graph_route=graph_route)
+    console.print()
 
 
 def run_wiki_approve_command(raw_selector: str | None = None) -> None:

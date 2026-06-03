@@ -653,6 +653,20 @@ def _wiki_neo4j_priority_enabled() -> bool:
     return raw not in ("0", "false", "no", "n", "off")
 
 
+def _friendly_doc_title_from_path(source_file: str) -> str:
+    """从 Neo4j 来源路径提取可读文档名。"""
+    p = str(source_file or "").strip()
+    if not p or p.startswith("neo4j://"):
+        return ""
+    stem = Path(p).stem
+    stem = re.sub(r"^【[^】]+】", "", stem)
+    if " - " in stem:
+        tail = stem.rsplit(" - ", 1)[-1].strip()
+        if tail:
+            return tail
+    return stem.strip()
+
+
 def _wiki_sources_from_neo4j_rows(rows: List[Dict[str, str]], *, query: str) -> List[WikiSource]:
     """将 Neo4j 命中行转为 WikiSource（供 ``neo4j_qa`` 结果映射为 wiki 的 sources 列表）。"""
     out: List[WikiSource] = []
@@ -663,13 +677,19 @@ def _wiki_sources_from_neo4j_rows(rows: List[Dict[str, str]], *, query: str) -> 
         obj = str(row.get("object") or "").strip()
         ev = str(row.get("evidence") or "").strip()
         src = str(row.get("source_file") or "").strip()
-        title = f"图谱：{subj or '节点'} —{pred or '关系'}→ {obj or '节点'}"
-        if len(title) > 118:
-            title = title[:117].rstrip() + "…"
-        snippet_lines = [f"{subj} —[{pred}]→ {obj}"]
+        doc_title = _friendly_doc_title_from_path(src)
+        if doc_title:
+            title = doc_title
+        elif subj and pred:
+            title = f"{subj} · {pred}"
+        else:
+            title = subj or "参考资料"
+        snippet_lines: List[str] = []
         if ev:
-            snippet_lines.append(f"证据摘录：{ev[:520]}")
-        snippet = "\n".join(snippet_lines)
+            snippet_lines.append(ev[:520])
+        elif subj and pred and obj:
+            snippet_lines.append(f"{subj} — {pred} — {obj}")
+        snippet = "\n".join(snippet_lines) or subj
         if len(snippet) > 1200:
             snippet = snippet[:1199].rstrip() + "…"
         path = src if src else "neo4j://knowledge-graph"
